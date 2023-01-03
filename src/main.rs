@@ -1,27 +1,29 @@
 use anyhow;
-use tor_circuit_generator::CircuitGenerator;
+use env_logger;
+
+#[allow(unused_imports)]
+use log::{debug, info, trace, warn};
 
 mod cli;
 use cli::Cli;
 
+mod client;
+
 mod input;
-use input::{ConsensusHandle, TorArchive};
+
+mod observer;
+
+mod sim;
+use sim::Simulator;
 
 fn main() -> anyhow::Result<()> {
+    // Initialize logging system
+    env_logger::init();
+
     let cli = Cli::parse();
 
-    let archive = TorArchive::new(cli.tor_data)?;
-
-    let handles = archive.find_consensuses(cli.from, cli.to)?;
-
-    for handle in handles {
-        dbg!(&handle);
-        let (consensus, descriptors) = handle.load()?;
-        let circgen = CircuitGenerator::new(&consensus, descriptors, vec![443, 80, 22]);
-        circgen
-            .build_circuit(3, 443)
-            .map_err(|_| anyhow::anyhow!("error building circuit"))?;
-    }
+    let simulator = Simulator::new(cli);
+    simulator.run()?;
 
     Ok(())
 }
