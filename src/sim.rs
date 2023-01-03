@@ -1,6 +1,7 @@
 //! The (abstract) simulator and simulation environment
 
 use anyhow;
+use chrono::prelude::*;
 #[allow(unused_imports)]
 use log::{debug, info, trace, warn};
 
@@ -24,19 +25,66 @@ impl Simulator {
     pub(crate) fn run(self) -> anyhow::Result<()> {
         info!("Finding consensuses");
         let archive = TorArchive::new(self.cli.tor_data)?;
-        let consensus_handles = archive.find_consensuses(self.cli.from, self.cli.to)?;
+        let consensus_handles = archive.find_consensuses(&self.cli.from, &self.cli.to)?;
         info!("Found {} consensuses.", consensus_handles.len());
 
-        info!("Creating {} clients", self.cli.clients);
-        let clients: Vec<_> = (0..self.cli.clients).map(|id| Client::new(id)).collect();
+        // parse simulation time range into DateTime objects
+        let start_time = self.cli.from.first_datetime();
+        let end_time = self.cli.to.last_datetime();
 
-        for handle in consensus_handles {
-            dbg!(&handle);
-            let (consensus, descriptors) = handle.load()?;
+        info!("Creating {} clients", self.cli.clients);
+        let mut clients: Vec<_> = (0..self.cli.clients)
+            .map(|id| Client::new(id, &start_time))
+            .collect();
+
+        // Iterate over the consensus handles for the simulation duration.
+        // We make this peekable so we can see when the next consensus period starts.
+        // Each item of this iterator is of type anyhow::Result<...>, so we keep
+        // any errors that occured.
+        let mut consensus_iterator = consensus_handles
+            .into_iter()
+            .map(|handle| -> anyhow::Result<_> {
+                let (consensus, descriptors) = handle.load()?;
+                anyhow::Ok((consensus, descriptors))
+            })
+            .peekable();
+
+        while let Some(consensus_result) = consensus_iterator.next() {
+            // we cannot use a for loop here because then we couldn't call .peek() on the iterator
+
+            let (consensus, descriptors) = consensus_result?;
+
+            let range_start = &consensus.valid_after;
+            trace!(
+                "Entering simulation epoch with consensus from {}",
+                &range_start
+            );
+
+            let range_end = match consensus_iterator.peek() {
+                Some(Ok((next_consensus, _))) => {
+                    // If there is a next consensus, use its start time as our end time.
+                    // This will ignore errors in the next consensus for now (we only
+                    // have a reference, so cannot return them easily), but these
+                    // will be handled in the next iteration
+                    next_consensus.valid_after
+                }
+                _ => {
+                    // Otherwise, use this consensus's valid_until
+                    // TODO
+                    *range_start + chrono::Duration::hours(3)
+                }
+            };
+            let range_end = std::cmp::min(range_end, end_time);
+
             let circgen = CircuitGenerator::new(&consensus, descriptors, vec![443, 80, 22]);
             circgen
                 .build_circuit(3, 443)
                 .map_err(|_| anyhow::anyhow!("error building circuit"))?;
+
+            // Trigger clients
+            for client in clients.iter_mut() {
+                client.trigger_new_epoch(range_start, &range_end, &circgen)?;
+            }
         }
         Ok(())
     }

@@ -38,8 +38,8 @@ impl TorArchive {
     /// Find all the consensuses in a given date range
     pub(crate) fn find_consensuses(
         &self,
-        from: MonthYear,
-        to: MonthYear,
+        from: &MonthYear,
+        to: &MonthYear,
     ) -> anyhow::Result<Vec<ConsensusHandle>> {
         // helper to get utf-8 file name
         let fname_as_string = |entry: &fs::DirEntry| -> anyhow::Result<String> {

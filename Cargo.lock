@@ -1097,8 +1097,12 @@ dependencies = [
  "chrono",
  "clap",
  "env_logger",
+ "lazy_static",
  "log",
+ "rand 0.8.5",
+ "rand_chacha",
  "regex 1.7.0",
+ "sha1",
  "tor-circuit-generator",
  "tordoc",
 ]
