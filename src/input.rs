@@ -9,7 +9,7 @@ use chrono::prelude::*;
 use regex::Regex;
 use tordoc;
 
-use crate::cli::MonthYear;
+use crate::cli::SimulationRangeEdge;
 
 /// Loader for data (consensus or descriptors) from an on-disk Tor data archive
 pub(crate) struct TorArchive {
@@ -38,8 +38,8 @@ impl TorArchive {
     /// Find all the consensuses in a given date range
     pub(crate) fn find_consensuses(
         &self,
-        from: &MonthYear,
-        to: &MonthYear,
+        from: &SimulationRangeEdge,
+        to: &SimulationRangeEdge,
     ) -> anyhow::Result<Vec<ConsensusHandle>> {
         // helper to get utf-8 file name
         let fname_as_string = |entry: &fs::DirEntry| -> anyhow::Result<String> {
@@ -64,17 +64,19 @@ impl TorArchive {
                     let dir_year = captures.get(1).unwrap().as_str().parse::<u16>().unwrap();
                     let dir_month = captures.get(2).unwrap().as_str().parse::<u8>().unwrap();
 
-                    if dir_year < from.year || (dir_year == from.year && dir_month < from.month) {
+                    if dir_year < from.year()
+                        || (dir_year == from.year() && dir_month < from.month())
+                    {
                         continue;
                     }
 
-                    if dir_year > to.year || (dir_year == to.year && dir_month > to.month) {
+                    if dir_year > to.year() || (dir_year == to.year() && dir_month > to.month()) {
                         continue;
                     }
                 }
             }
 
-            // find all consensuses in this folder
+            // find all matching consensuses in this folder
             for subentry in fs::read_dir(entry.path())? {
                 let subentry = subentry?;
                 if !re_subdir.is_match(fname_as_string(&subentry)?.as_str()) {
@@ -88,12 +90,19 @@ impl TorArchive {
                         Some(captures) => {
                             let raw_date = captures.get(1).unwrap().as_str();
 
+                            let time = Utc.from_utc_datetime(&NaiveDateTime::parse_from_str(
+                                raw_date,
+                                "%Y-%m-%d-%H-%M-%S",
+                            )?);
+
+                            // ignore consensuses that do not match specified days
+                            if time < from.first_datetime() || time > from.last_datetime() {
+                                continue;
+                            }
+
                             handles.push(ConsensusHandle {
                                 path: file.path(),
-                                time: Utc.from_utc_datetime(&NaiveDateTime::parse_from_str(
-                                    raw_date,
-                                    "%Y-%m-%d-%H-%M-%S",
-                                )?),
+                                time,
                             });
                         }
                     }

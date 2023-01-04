@@ -33,6 +33,14 @@ impl Simulator {
         let start_time = self.cli.from.first_datetime();
         let end_time = self.cli.to.last_datetime();
 
+        if end_time <= start_time {
+            anyhow::bail!(
+                "The simulation start time (given: {}) must be before the end time (given: {})",
+                start_time,
+                end_time
+            );
+        }
+
         info!("Creating {} clients", self.cli.clients);
         let mut clients: Vec<_> = (0..self.cli.clients)
             .map(|id| Client::new(id, &start_time))
