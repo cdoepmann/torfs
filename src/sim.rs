@@ -10,6 +10,7 @@ use tor_circuit_generator::CircuitGenerator;
 use crate::cli::Cli;
 use crate::client::Client;
 use crate::input::{ConsensusHandle, TorArchive};
+use crate::observer::SimulationObserver;
 
 pub(crate) struct Simulator {
     cli: Cli,
@@ -22,7 +23,7 @@ impl Simulator {
     }
 
     /// Run the simulation
-    pub(crate) fn run(self) -> anyhow::Result<()> {
+    pub(crate) fn run(self) -> anyhow::Result<SimulationObserver> {
         info!("Finding consensuses");
         let archive = TorArchive::new(self.cli.tor_data)?;
         let consensus_handles = archive.find_consensuses(&self.cli.from, &self.cli.to)?;
@@ -86,6 +87,12 @@ impl Simulator {
                 client.trigger_new_epoch(range_start, &range_end, &circgen)?;
             }
         }
-        Ok(())
+
+        // Wrap up the simulation
+        let observer =
+            SimulationObserver::from_clients(clients.into_iter().map(|c| c.into_observer()));
+        observer.print();
+
+        Ok(observer)
     }
 }

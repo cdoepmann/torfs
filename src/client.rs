@@ -1,5 +1,6 @@
 //! Implementation of simulated clients/users
 
+use crate::observer::ClientObserver;
 use crate::seeded_rand::get_rng;
 
 use tor_circuit_generator::CircuitGenerator;
@@ -12,6 +13,7 @@ use rand::Rng;
 pub(crate) struct Client {
     id: u64,
     next_circuit_time: DateTime<Utc>,
+    observer: ClientObserver,
 }
 
 impl Client {
@@ -20,6 +22,7 @@ impl Client {
         Client {
             id,
             next_circuit_time: *start_time + Self::sample_intercircuit_delay(),
+            observer: ClientObserver::new(id),
         }
     }
 
@@ -45,32 +48,23 @@ impl Client {
 
         // construct all the circuits in this time frame
         while epoch_start <= &self.next_circuit_time && &self.next_circuit_time <= epoch_end {
-            self.generate_circuit(circuit_generator, &self.next_circuit_time)?;
+            self.generate_circuit(circuit_generator)?;
 
-            self.next_circuit_time += Self::sample_intercircuit_delay()
+            self.next_circuit_time += Self::sample_intercircuit_delay();
         }
 
         Ok(())
     }
-
-    fn generate_circuit(
-        &self,
-        circuit_generator: &CircuitGenerator,
-        timestamp: &DateTime<Utc>,
-    ) -> anyhow::Result<()> {
+    /// Generate a new circuit at the "current" time (`self.next_circuit_time`)
+    fn generate_circuit(&mut self, circuit_generator: &CircuitGenerator) -> anyhow::Result<()> {
         // TODO: port handling
+        let port = 443;
         let circuit = circuit_generator
-            .build_circuit(3, 443)
+            .build_circuit(3, port)
             .map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
 
-        trace!(
-            "[{}] Client {} built circuit: {} {} {}",
-            timestamp,
-            self.get_id(),
-            circuit.guard.fingerprint,
-            circuit.middle[0].fingerprint,
-            circuit.exit.fingerprint,
-        );
+        self.observer
+            .notify_circuit(self.next_circuit_time, circuit, port);
 
         Ok(())
     }
@@ -78,5 +72,10 @@ impl Client {
     /// Get the client's ID
     pub(crate) fn get_id(&self) -> u64 {
         self.id
+    }
+
+    /// Finish this client and return its observer
+    pub(crate) fn into_observer(self) -> ClientObserver {
+        self.observer
     }
 }
