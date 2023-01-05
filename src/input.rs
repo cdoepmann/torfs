@@ -96,7 +96,7 @@ impl TorArchive {
                             )?);
 
                             // ignore consensuses that do not match specified days
-                            if time < from.first_datetime() || time > from.last_datetime() {
+                            if time < from.first_datetime() || time > to.last_datetime() {
                                 continue;
                             }
 
