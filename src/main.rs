@@ -6,16 +6,12 @@ use log::{debug, info, trace, warn};
 
 mod cli;
 use cli::Cli;
-
 mod client;
-
 mod input;
-
 mod observer;
-
 mod sim;
+mod user;
 use sim::Simulator;
-
 mod seeded_rand;
 
 fn main() -> anyhow::Result<()> {

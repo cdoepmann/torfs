@@ -1,38 +1,30 @@
 //! Implementation of simulated clients/users
 
+use std::iter::Peekable;
+
 use crate::observer::ClientObserver;
-use crate::seeded_rand::get_rng;
+use crate::user::{Request, UserModel};
 
 use tor_circuit_generator::CircuitGenerator;
 
 use chrono::prelude::*;
 #[allow(unused_imports)]
 use log::{debug, info, trace, warn};
-use rand::Rng;
 
-pub(crate) struct Client {
+pub(crate) struct Client<U: UserModel> {
     id: u64,
-    next_circuit_time: DateTime<Utc>,
     observer: ClientObserver,
+    user_model: Peekable<U>,
 }
 
-impl Client {
+impl<U: UserModel> Client<U> {
     /// Construct a new Client
-    pub(crate) fn new(id: u64, start_time: &DateTime<Utc>) -> Client {
+    pub(crate) fn new(id: u64, user_model: U) -> Client<U> {
         Client {
             id,
-            next_circuit_time: *start_time + Self::sample_intercircuit_delay(),
             observer: ClientObserver::new(id),
+            user_model: user_model.peekable(),
         }
-    }
-
-    /// Get the next time to build a circuit TODO based on a user model
-    fn sample_intercircuit_delay() -> chrono::Duration {
-        // TODO
-        let mut rng = get_rng();
-
-        // three days for now
-        chrono::Duration::seconds(rng.gen_range(0..=60 * 60 * 24 * 3))
     }
 
     /// Called from outside when the simulation enters a new epoch,
@@ -44,27 +36,35 @@ impl Client {
         epoch_end: &DateTime<Utc>,
         circuit_generator: &CircuitGenerator,
     ) -> anyhow::Result<()> {
-        // TODO use user model to decide whether to build a circuit and what kind
+        loop {
+            // Look at the next request, but do not consume it yet
+            let next = self.user_model.peek();
 
-        // construct all the circuits in this time frame
-        while epoch_start <= &self.next_circuit_time && &self.next_circuit_time <= epoch_end {
-            self.generate_circuit(circuit_generator)?;
+            let request = match next {
+                Some(x) if (&x.time >= epoch_start && &x.time < epoch_end) => {
+                    // use/consume this request element and advance the user model
+                    self.user_model.next().unwrap() // cannot fail as peek() was Some(_)
+                }
+                _ => break,
+            };
 
-            self.next_circuit_time += Self::sample_intercircuit_delay();
+            self.generate_circuit(circuit_generator, request)?;
         }
 
         Ok(())
     }
     /// Generate a new circuit at the "current" time (`self.next_circuit_time`)
-    fn generate_circuit(&mut self, circuit_generator: &CircuitGenerator) -> anyhow::Result<()> {
-        // TODO: port handling
-        let port = 443;
+    fn generate_circuit(
+        &mut self,
+        circuit_generator: &CircuitGenerator,
+        request: Request,
+    ) -> anyhow::Result<()> {
         let circuit = circuit_generator
-            .build_circuit(3, port)
+            .build_circuit(3, request.port)
             .map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
 
         self.observer
-            .notify_circuit(self.next_circuit_time, circuit, port);
+            .notify_circuit(request.time, circuit, request.port);
 
         Ok(())
     }

@@ -11,6 +11,7 @@ use crate::cli::Cli;
 use crate::client::Client;
 use crate::input::{ConsensusHandle, TorArchive};
 use crate::observer::SimulationObserver;
+use crate::user::DummyUser;
 
 pub(crate) struct Simulator {
     cli: Cli,
@@ -43,7 +44,7 @@ impl Simulator {
 
         info!("Creating {} clients", self.cli.clients);
         let mut clients: Vec<_> = (0..self.cli.clients)
-            .map(|id| Client::new(id, &start_time))
+            .map(|id| Client::new(id, DummyUser::new(start_time.clone())))
             .collect();
 
         // Iterate over the consensus handles for the simulation duration.
