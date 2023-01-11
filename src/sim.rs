@@ -93,7 +93,7 @@ impl Simulator {
 
             // Trigger clients
             for client in clients.iter_mut() {
-                client.trigger_new_epoch(range_start, &range_end, &circgen)?;
+                client.handle_new_epoch(range_start, &range_end, &circgen)?;
             }
         }
 

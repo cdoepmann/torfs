@@ -13,6 +13,7 @@ use rand::Rng;
 pub(crate) trait UserModel: Iterator<Item = Request> {}
 
 /// A traffic request by the user, to be carried out by the Tor client
+#[derive(Clone)]
 pub(crate) struct Request {
     /// Time of this request
     pub time: DateTime<Utc>,

@@ -8,11 +8,14 @@ use std::cmp::Ordering;
 use chrono::{DateTime, Utc};
 use tor_circuit_generator::TorCircuit;
 
+use crate::client;
+use crate::user::Request;
+
 #[allow(unused_imports)]
 use log::{debug, info, trace, warn};
 
 pub(crate) struct SimulationObserver {
-    pub circuit_events: Vec<CircuitEvent>,
+    pub circuit_events: Vec<NewCircuitEvent>,
 }
 
 impl SimulationObserver {
@@ -25,8 +28,8 @@ impl SimulationObserver {
         let merged_iterator = client_observers
             .into_iter()
             .map(|mut co| {
-                co.circuit_events.sort_unstable();
-                co.circuit_events.into_iter()
+                co.events_new_circuit.sort_unstable();
+                co.events_new_circuit.into_iter()
             })
             .kmerge();
 
@@ -49,14 +52,14 @@ impl SimulationObserver {
     }
 }
 
-pub(crate) struct CircuitEvent {
+pub(crate) struct NewCircuitEvent {
     pub time: DateTime<Utc>,
     pub client_id: u64,
     pub circuit: TorCircuit,
     pub port: u16,
 }
 
-impl Ord for CircuitEvent {
+impl Ord for NewCircuitEvent {
     fn cmp(&self, other: &Self) -> Ordering {
         self.time
             .cmp(&other.time)
@@ -65,24 +68,55 @@ impl Ord for CircuitEvent {
     }
 }
 
-impl PartialOrd for CircuitEvent {
+impl PartialOrd for NewCircuitEvent {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl PartialEq for CircuitEvent {
+impl PartialEq for NewCircuitEvent {
     fn eq(&self, other: &Self) -> bool {
         self.cmp(&other) == Ordering::Equal
     }
 }
 
-impl Eq for CircuitEvent {}
+impl Eq for NewCircuitEvent {}
+
+pub(crate) struct CircuitUsedEvent {
+    pub time: DateTime<Utc>,
+    pub client_id: u64,
+    pub circuit: client::ShallowCircuit,
+    pub request: Request,
+}
+
+impl Ord for CircuitUsedEvent {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.time
+            .cmp(&other.time)
+            .then(self.client_id.cmp(&other.client_id))
+            .then(self.request.port.cmp(&other.request.port))
+    }
+}
+
+impl PartialOrd for CircuitUsedEvent {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for CircuitUsedEvent {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(&other) == Ordering::Equal
+    }
+}
+
+impl Eq for CircuitUsedEvent {}
 
 /// An observer object used by a single client to collect their events (locally).
 pub(crate) struct ClientObserver {
     client_id: u64,
-    circuit_events: Vec<CircuitEvent>,
+    events_new_circuit: Vec<NewCircuitEvent>,
+    events_circuit_used: Vec<CircuitUsedEvent>,
 }
 
 impl ClientObserver {
@@ -90,12 +124,18 @@ impl ClientObserver {
     pub(crate) fn new(client_id: u64) -> ClientObserver {
         ClientObserver {
             client_id,
-            circuit_events: Vec::new(),
+            events_new_circuit: Vec::new(),
+            events_circuit_used: Vec::new(),
         }
     }
 
-    /// Notify the observer of a new circuit event
-    pub(crate) fn notify_circuit(&mut self, time: DateTime<Utc>, circuit: TorCircuit, port: u16) {
+    /// Notify the observer that a new circuit was created
+    pub(crate) fn notify_new_circuit(
+        &mut self,
+        time: DateTime<Utc>,
+        circuit: &TorCircuit,
+        port: u16,
+    ) {
         trace!(
             "[{}] Client {} built circuit: {} {} {}",
             &time,
@@ -105,11 +145,34 @@ impl ClientObserver {
             circuit.exit.fingerprint,
         );
 
-        self.circuit_events.push(CircuitEvent {
+        self.events_new_circuit.push(NewCircuitEvent {
             time,
             client_id: self.client_id,
-            circuit,
+            circuit: circuit.clone(),
             port,
+        });
+    }
+
+    /// Notify the observer that a circuit was used to carry a new stream
+    pub(crate) fn notify_circuit_used(
+        &mut self,
+        circuit: &client::ShallowCircuit,
+        request: &Request,
+    ) {
+        trace!(
+            "[{}] Client {} uses the following circuit for a stream request: {} {} {}",
+            &request.time,
+            self.client_id,
+            circuit.guard,
+            circuit.middle,
+            circuit.exit,
+        );
+
+        self.events_circuit_used.push(CircuitUsedEvent {
+            time: request.time.clone(),
+            client_id: self.client_id,
+            circuit: circuit.clone(),
+            request: request.clone(),
         });
     }
 }
