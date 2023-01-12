@@ -123,6 +123,7 @@ impl ShallowCircuit {
         circgen_circuit: tor_circuit_generator::TorCircuit,
         stable: bool,
         fast: bool,
+        dirty_time: Option<DateTime<Utc>>,
     ) -> ShallowCircuit {
         if circgen_circuit.middle.len() != 1 {
             panic!("We only support 3-hop circuits at the moment");
@@ -131,7 +132,7 @@ impl ShallowCircuit {
             guard: circgen_circuit.guard.fingerprint.clone(),
             middle: circgen_circuit.middle[0].fingerprint.clone(),
             exit: circgen_circuit.exit.fingerprint.clone(),
-            dirty_time: None,
+            dirty_time,
             is_internal: false,
             is_stable: stable,
             is_fast: fast,
@@ -187,8 +188,6 @@ impl CircuitManager {
         circgen: &CircuitGenerator,
         observer: &mut ClientObserver,
     ) -> anyhow::Result<()> {
-        // TODO
-
         // Unfortunately, we have to split the following two criteria into
         // separate functions to work around one of the current
         // limitations of the borrow checker.
@@ -218,10 +217,12 @@ impl CircuitManager {
                 circuit,
                 need_stable,
                 need_fast,
+                Some(request.time.clone()),
             ));
             chosen_circ = self.circuits.last();
         }
         let chosen_circ = chosen_circ.unwrap(); // cannot fail as the if block adds an element if there was none
+        observer.notify_circuit_used(chosen_circ, &request);
 
         Ok(())
     }
