@@ -6,7 +6,7 @@ use crate::observer::ClientObserver;
 use crate::user::{Request, UserModel};
 
 use tor_circuit_generator::CircuitGenerator;
-use tordoc::Fingerprint;
+use tordoc::{consensus::Flag, Fingerprint};
 
 use chrono::prelude::*;
 use chrono::Duration;
@@ -17,6 +17,7 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref MAX_CIRCUIT_DIRTINESS: Duration = Duration::minutes(10);
+    static ref CIRCUIT_IDLE_TIMEOUT: Duration = Duration::minutes(60);
     static ref LONG_LIVED_PORTS: Vec<u16> =
         [21, 22, 706, 1863, 5050, 5190, 5222, 5223, 6523, 6667, 6697, 8300]
             .into_iter()
@@ -57,12 +58,12 @@ impl<U: UserModel> Client<U> {
         // TODO: period_client_update
         // TODO: update guard set
 
-        // TODO: kill circuits with relays that are missing or down now
-        // kill old dirty circuits
-        // kill old clean circuits
-        // kill circuits with relays that have gone into hibernation
-        // cover uncovered ports while fewer than
-        // TorOptions.max_unused_open_circuits clean
+        // TODO: cover uncovered ports while fewer than
+        // TODO: TorOptions.max_unused_open_circuits clean
+
+        // Do time-based maintaining at least once per epoch
+        self.circuit_manager
+            .timed_client_updates(&epoch_start, circuit_generator)?;
 
         // construct all the circuits in this time frame
         loop {
@@ -76,6 +77,12 @@ impl<U: UserModel> Client<U> {
                 }
                 _ => break,
             };
+
+            // Do time-based maintaining. TorPS does this once per minute but it
+            // **should** be ok to do this only when actually needed.
+            // TODO: Maybe this is not true anymore when we introduce need covering
+            self.circuit_manager
+                .timed_client_updates(&request.time, circuit_generator)?;
 
             self.circuit_manager
                 .handle_request(request, circuit_generator, &mut self.observer)?;
@@ -106,7 +113,8 @@ pub(crate) struct ShallowCircuit {
     pub middle: Fingerprint,
     pub exit: Fingerprint,
     // TODO: do we need to remember exit policy, ports, etc.?
-    // TODO: time keeping etc.
+    /// Time when this circuit was created
+    time: DateTime<Utc>,
     /// Time the circuit became "dirty". If this is None, circuit is clean.
     dirty_time: Option<DateTime<Utc>>,
     /// Is this circuit intended for name resolution and onion services only?
@@ -123,6 +131,7 @@ impl ShallowCircuit {
         circgen_circuit: tor_circuit_generator::TorCircuit,
         stable: bool,
         fast: bool,
+        time: DateTime<Utc>,
         dirty_time: Option<DateTime<Utc>>,
     ) -> ShallowCircuit {
         if circgen_circuit.middle.len() != 1 {
@@ -132,6 +141,7 @@ impl ShallowCircuit {
             guard: circgen_circuit.guard.fingerprint.clone(),
             middle: circgen_circuit.middle[0].fingerprint.clone(),
             exit: circgen_circuit.exit.fingerprint.clone(),
+            time,
             dirty_time,
             is_internal: false,
             is_stable: stable,
@@ -181,6 +191,47 @@ impl CircuitManager {
         }
     }
 
+    /// When entering a new epoch, carry out the housekeeping of currently
+    /// maintained circuits, etc.
+    fn timed_client_updates(
+        &mut self,
+        time: &DateTime<Utc>,
+        circgen: &CircuitGenerator,
+    ) -> anyhow::Result<()> {
+        // remove old circuits
+        self.circuits.retain(|circuit| match circuit.dirty_time {
+            Some(dirty_time) => {
+                // dirty circuits
+                return dirty_time + *MAX_CIRCUIT_DIRTINESS >= *time;
+            }
+            None => {
+                // clean circuits
+                return circuit.time + *CIRCUIT_IDLE_TIMEOUT >= *time;
+            }
+        });
+
+        // remove circuits whose relays have gone missing
+        self.circuits.retain(|circuit| {
+            for relay in [&circuit.guard, &circuit.middle, &circuit.exit] {
+                match circgen.lookup_relay(relay) {
+                    None => {
+                        return false;
+                    }
+                    Some(x) => {
+                        // TODO: check old hibernating flag from descriptor
+                        if !(x.flags.contains(&Flag::Running)) || !(x.flags.contains(&Flag::Valid))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            true
+        });
+
+        Ok(())
+    }
+
     /// Try to accommodate a stream request, using the existing circuits etc.
     fn handle_request(
         &mut self,
@@ -217,6 +268,7 @@ impl CircuitManager {
                 circuit,
                 need_stable,
                 need_fast,
+                request.time.clone(),
                 Some(request.time.clone()),
             ));
             chosen_circ = self.circuits.last();
