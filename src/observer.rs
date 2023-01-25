@@ -112,11 +112,49 @@ impl PartialEq for CircuitUsedEvent {
 
 impl Eq for CircuitUsedEvent {}
 
+pub(crate) struct CircuitClosedEvent {
+    pub time: DateTime<Utc>,
+    pub client_id: u64,
+    pub circuit: client::ShallowCircuit,
+    pub reason: CircuitCloseReason,
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub(crate) enum CircuitCloseReason {
+    OldDirty,
+    OldClean,
+    Down,
+}
+
+impl Ord for CircuitClosedEvent {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.time
+            .cmp(&other.time)
+            .then(self.client_id.cmp(&other.client_id))
+            .then(self.reason.cmp(&other.reason))
+    }
+}
+
+impl PartialOrd for CircuitClosedEvent {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for CircuitClosedEvent {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(&other) == Ordering::Equal
+    }
+}
+
+impl Eq for CircuitClosedEvent {}
+
 /// An observer object used by a single client to collect their events (locally).
 pub(crate) struct ClientObserver {
     client_id: u64,
     events_new_circuit: Vec<NewCircuitEvent>,
     events_circuit_used: Vec<CircuitUsedEvent>,
+    events_circuit_closed: Vec<CircuitClosedEvent>,
 }
 
 impl ClientObserver {
@@ -126,6 +164,7 @@ impl ClientObserver {
             client_id,
             events_new_circuit: Vec::new(),
             events_circuit_used: Vec::new(),
+            events_circuit_closed: Vec::new(),
         }
     }
 
@@ -173,6 +212,31 @@ impl ClientObserver {
             client_id: self.client_id,
             circuit: circuit.clone(),
             request: request.clone(),
+        });
+    }
+
+    /// Notify the observer that a circuit was closed
+    pub(crate) fn notify_circuit_closed(
+        &mut self,
+        time: &DateTime<Utc>,
+        circuit: &client::ShallowCircuit,
+        reason: CircuitCloseReason,
+    ) {
+        trace!(
+            "[{}] Client {} closed the following circuit becausee of \"{:?}\": {} {} {}",
+            &time,
+            self.client_id,
+            reason,
+            circuit.guard,
+            circuit.middle,
+            circuit.exit,
+        );
+
+        self.events_circuit_closed.push(CircuitClosedEvent {
+            time: time.clone(),
+            client_id: self.client_id,
+            circuit: circuit.clone(),
+            reason,
         });
     }
 }

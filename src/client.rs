@@ -2,8 +2,9 @@
 
 use std::iter::Peekable;
 
-use crate::observer::ClientObserver;
+use crate::observer::{CircuitCloseReason, ClientObserver};
 use crate::user::{Request, UserModel};
+use crate::utils::*;
 
 use tor_circuit_generator::CircuitGenerator;
 use tordoc::{consensus::Flag, Fingerprint};
@@ -62,8 +63,11 @@ impl<U: UserModel> Client<U> {
         // TODO: TorOptions.max_unused_open_circuits clean
 
         // Do time-based maintaining at least once per epoch
-        self.circuit_manager
-            .timed_client_updates(&epoch_start, circuit_generator)?;
+        self.circuit_manager.timed_client_updates(
+            &epoch_start,
+            circuit_generator,
+            &mut self.observer,
+        )?;
 
         // construct all the circuits in this time frame
         loop {
@@ -81,8 +85,11 @@ impl<U: UserModel> Client<U> {
             // Do time-based maintaining. TorPS does this once per minute but it
             // **should** be ok to do this only when actually needed.
             // TODO: Maybe this is not true anymore when we introduce need covering
-            self.circuit_manager
-                .timed_client_updates(&request.time, circuit_generator)?;
+            self.circuit_manager.timed_client_updates(
+                &request.time,
+                circuit_generator,
+                &mut self.observer,
+            )?;
 
             self.circuit_manager
                 .handle_request(request, circuit_generator, &mut self.observer)?;
@@ -197,37 +204,56 @@ impl CircuitManager {
         &mut self,
         time: &DateTime<Utc>,
         circgen: &CircuitGenerator,
+        observer: &mut ClientObserver,
     ) -> anyhow::Result<()> {
-        // remove old circuits
-        self.circuits.retain(|circuit| match circuit.dirty_time {
-            Some(dirty_time) => {
-                // dirty circuits
-                return dirty_time + *MAX_CIRCUIT_DIRTINESS >= *time;
-            }
-            None => {
-                // clean circuits
-                return circuit.time + *CIRCUIT_IDLE_TIMEOUT >= *time;
-            }
-        });
+        // remove old dirty circuits
+        self.circuits.retain_or_else(
+            |circuit| {
+                if let Some(dirty_time) = circuit.dirty_time {
+                    // dirty circuits
+                    return dirty_time + *MAX_CIRCUIT_DIRTINESS >= *time;
+                } else {
+                    true
+                }
+            },
+            |circuit| observer.notify_circuit_closed(time, circuit, CircuitCloseReason::OldDirty),
+        );
+
+        // remove old clean circuits
+        self.circuits.retain_or_else(
+            |circuit| {
+                if let None = circuit.dirty_time {
+                    // clean circuits
+                    return circuit.time + *CIRCUIT_IDLE_TIMEOUT >= *time;
+                } else {
+                    true
+                }
+            },
+            |circuit| observer.notify_circuit_closed(time, circuit, CircuitCloseReason::OldClean),
+        );
 
         // remove circuits whose relays have gone missing
-        self.circuits.retain(|circuit| {
-            for relay in [&circuit.guard, &circuit.middle, &circuit.exit] {
-                match circgen.lookup_relay(relay) {
-                    None => {
-                        return false;
-                    }
-                    Some(x) => {
-                        // TODO: check old hibernating flag from descriptor
-                        if !(x.flags.contains(&Flag::Running)) || !(x.flags.contains(&Flag::Valid))
-                        {
+        self.circuits.retain_or_else(
+            |circuit| {
+                for relay in [&circuit.guard, &circuit.middle, &circuit.exit] {
+                    match circgen.lookup_relay(relay) {
+                        None => {
                             return false;
+                        }
+                        Some(x) => {
+                            // TODO: check old hibernating flag from descriptor
+                            if !(x.flags.contains(&Flag::Running))
+                                || !(x.flags.contains(&Flag::Valid))
+                            {
+                                return false;
+                            }
                         }
                     }
                 }
-            }
-            true
-        });
+                true
+            },
+            |circuit| observer.notify_circuit_closed(time, circuit, CircuitCloseReason::Down),
+        );
 
         Ok(())
     }

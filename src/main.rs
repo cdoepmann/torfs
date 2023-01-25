@@ -13,6 +13,7 @@ mod sim;
 mod user;
 use sim::Simulator;
 mod seeded_rand;
+mod utils;
 
 fn main() -> anyhow::Result<()> {
     // Initialize logging system
