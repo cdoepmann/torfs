@@ -7,6 +7,7 @@ use std::cmp::Ordering;
 
 use chrono::{DateTime, Utc};
 use tor_circuit_generator::TorCircuit;
+use tordoc::Fingerprint;
 
 use crate::client;
 use crate::user::Request;
@@ -82,11 +83,47 @@ impl PartialEq for NewCircuitEvent {
 
 impl Eq for NewCircuitEvent {}
 
-pub(crate) struct CircuitUsedEvent {
-    pub time: DateTime<Utc>,
-    pub client_id: u64,
-    pub circuit: client::ShallowCircuit,
-    pub request: Request,
+/// A snapshot of a ShallowCircuit at some time. In the first place, this
+/// doesn't save a (clone) covered_needs reference, but only a snapshot
+/// serialized to a String
+#[derive(Clone, Debug)]
+struct ShallowCircuitSnapshot {
+    pub guard: Fingerprint,
+    pub middle: Fingerprint,
+    pub exit: Fingerprint,
+    time: DateTime<Utc>,
+    dirty_time: Option<DateTime<Utc>>,
+    is_internal: bool,
+    is_stable: bool,
+    is_fast: bool,
+    covered_needs: Vec<String>,
+}
+
+impl From<&client::ShallowCircuit> for ShallowCircuitSnapshot {
+    fn from(circuit: &client::ShallowCircuit) -> Self {
+        ShallowCircuitSnapshot {
+            guard: circuit.guard.clone(),
+            middle: circuit.middle.clone(),
+            exit: circuit.exit.clone(),
+            time: circuit.time.clone(),
+            dirty_time: circuit.dirty_time.clone(),
+            is_internal: circuit.is_internal.clone(),
+            is_stable: circuit.is_stable.clone(),
+            is_fast: circuit.is_fast.clone(),
+            covered_needs: circuit
+                .covered_needs
+                .iter()
+                .map(|x| x.to_string())
+                .collect(),
+        }
+    }
+}
+
+struct CircuitUsedEvent {
+    time: DateTime<Utc>,
+    client_id: u64,
+    circuit: ShallowCircuitSnapshot,
+    request: Request,
 }
 
 impl Ord for CircuitUsedEvent {
@@ -112,11 +149,11 @@ impl PartialEq for CircuitUsedEvent {
 
 impl Eq for CircuitUsedEvent {}
 
-pub(crate) struct CircuitClosedEvent {
-    pub time: DateTime<Utc>,
-    pub client_id: u64,
-    pub circuit: client::ShallowCircuit,
-    pub reason: CircuitCloseReason,
+struct CircuitClosedEvent {
+    time: DateTime<Utc>,
+    client_id: u64,
+    circuit: ShallowCircuitSnapshot,
+    reason: CircuitCloseReason,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -174,14 +211,16 @@ impl ClientObserver {
         time: DateTime<Utc>,
         circuit: &TorCircuit,
         port: u16,
+        reason: String,
     ) {
         trace!(
-            "[{}] Client {} built circuit: {} {} {}",
+            "[{}] Client {} built circuit: {} {} {} [reason: {}]",
             &time,
             self.client_id,
             circuit.guard.fingerprint,
             circuit.middle[0].fingerprint,
             circuit.exit.fingerprint,
+            reason,
         );
 
         self.events_new_circuit.push(NewCircuitEvent {
@@ -210,7 +249,7 @@ impl ClientObserver {
         self.events_circuit_used.push(CircuitUsedEvent {
             time: request.time.clone(),
             client_id: self.client_id,
-            circuit: circuit.clone(),
+            circuit: circuit.into(),
             request: request.clone(),
         });
     }
@@ -235,8 +274,12 @@ impl ClientObserver {
         self.events_circuit_closed.push(CircuitClosedEvent {
             time: time.clone(),
             client_id: self.client_id,
-            circuit: circuit.clone(),
+            circuit: circuit.into(),
             reason,
         });
+    }
+
+    pub(crate) fn notify_need_expired(&mut self, time: &DateTime<Utc>, need: String) {
+        trace!("[{}] Client {}: {} expired.", &time, self.client_id, need);
     }
 }

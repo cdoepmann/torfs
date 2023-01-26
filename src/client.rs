@@ -2,6 +2,7 @@
 
 use std::iter::Peekable;
 
+use crate::needs::{NeedHandle, NeedsContainer};
 use crate::observer::{CircuitCloseReason, ClientObserver};
 use crate::user::{Request, UserModel};
 use crate::utils::*;
@@ -114,22 +115,24 @@ impl<U: UserModel> Client<U> {
 /// We use this to persist circuits over different consensuses, without needing
 /// to keep track of the consensus itself. This also makes sure we do not
 /// accidentally use stale consensus information of the relays at some point.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct ShallowCircuit {
-    pub guard: Fingerprint,
-    pub middle: Fingerprint,
-    pub exit: Fingerprint,
+    pub(crate) guard: Fingerprint,
+    pub(crate) middle: Fingerprint,
+    pub(crate) exit: Fingerprint,
     // TODO: do we need to remember exit policy, ports, etc.?
     /// Time when this circuit was created
-    time: DateTime<Utc>,
+    pub(crate) time: DateTime<Utc>,
     /// Time the circuit became "dirty". If this is None, circuit is clean.
-    dirty_time: Option<DateTime<Utc>>,
+    pub(crate) dirty_time: Option<DateTime<Utc>>,
     /// Is this circuit intended for name resolution and onion services only?
-    is_internal: bool,
+    pub(crate) is_internal: bool,
     /// Is this circuit expected to have only stable relays?
-    is_stable: bool,
+    pub(crate) is_stable: bool,
     /// Is this circuit expected to have only fast relays?
-    is_fast: bool,
+    pub(crate) is_fast: bool,
+    /// Port needs that are covered by this circuit
+    pub(crate) covered_needs: Vec<NeedHandle>,
 }
 
 impl ShallowCircuit {
@@ -140,6 +143,7 @@ impl ShallowCircuit {
         fast: bool,
         time: DateTime<Utc>,
         dirty_time: Option<DateTime<Utc>>,
+        covered_need: Option<NeedHandle>,
     ) -> ShallowCircuit {
         if circgen_circuit.middle.len() != 1 {
             panic!("We only support 3-hop circuits at the moment");
@@ -153,6 +157,7 @@ impl ShallowCircuit {
             is_internal: false,
             is_stable: stable,
             is_fast: fast,
+            covered_needs: covered_need.into_iter().collect(),
         }
     }
 
@@ -181,13 +186,12 @@ impl ShallowCircuit {
 
 /// A container for circuits currently maintained by the client
 struct CircuitManager {
-    // TODO:
-    // - dirty circuits
-    // - clean circuits
-    //
-    //
     /// Circuits that have already been constructed (both, clean & dirty)
     circuits: Vec<ShallowCircuit>,
+    /// Ports that need to be covered by circuits proactively
+    port_needs: NeedsContainer,
+    /// Last time the time-based update was triggered
+    last_triggered: Option<DateTime<Utc>>,
 }
 
 impl CircuitManager {
@@ -195,6 +199,8 @@ impl CircuitManager {
     fn new() -> CircuitManager {
         CircuitManager {
             circuits: Vec::new(),
+            port_needs: NeedsContainer::new(),
+            last_triggered: None,
         }
     }
 
@@ -206,6 +212,16 @@ impl CircuitManager {
         circgen: &CircuitGenerator,
         observer: &mut ClientObserver,
     ) -> anyhow::Result<()> {
+        // When being used for the first time, set an initial port need.
+        if let None = self.last_triggered {
+            self.port_needs.add_need(80, time, true, false);
+        };
+        self.last_triggered = Some(time.clone());
+
+        // expire port needs
+        self.port_needs
+            .remove_expired(time, |need| observer.notify_need_expired(time, need));
+
         // remove old dirty circuits
         self.circuits.retain_or_else(
             |circuit| {
@@ -220,6 +236,8 @@ impl CircuitManager {
         );
 
         // remove old clean circuits
+        // Note that, when the circuits are destroyed, the `NeedHandle`s are dropped as well,
+        // so the "covered" count of each need is decremented as well.
         self.circuits.retain_or_else(
             |circuit| {
                 if let None = circuit.dirty_time {
@@ -255,6 +273,34 @@ impl CircuitManager {
             |circuit| observer.notify_circuit_closed(time, circuit, CircuitCloseReason::Down),
         );
 
+        // Cover uncovered port needs
+        while let Some(need_handle) = self.port_needs.get_uncovered_need() {
+            // build a suitable circuit for this need
+
+            // these unwraps never fail as we have just got an existing need
+            let port = need_handle.get_port().unwrap();
+            let need_stable = need_handle.get_stable().unwrap();
+            let need_fast = need_handle.get_fast().unwrap();
+
+            let circuit = circgen
+                .build_circuit_with_flags(3, port, need_fast, need_stable)
+                .map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
+            observer.notify_new_circuit(
+                time.clone(),
+                &circuit,
+                port,
+                format!("to cover need {}", need_handle.to_string()),
+            );
+            self.circuits.push(ShallowCircuit::from_generated_circuit(
+                circuit,
+                need_stable,
+                need_fast,
+                time.clone(),
+                None,              // circuit is clean
+                Some(need_handle), // this is to cover a port need
+            ));
+        }
+
         Ok(())
     }
 
@@ -289,18 +335,64 @@ impl CircuitManager {
             let circuit = circgen
                 .build_circuit_with_flags(3, request.port, need_fast, need_stable)
                 .map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
-            observer.notify_new_circuit(request.time, &circuit, request.port);
+            observer.notify_new_circuit(
+                request.time,
+                &circuit,
+                request.port,
+                format!("to fulfil stream request {:?}", &request),
+            );
             self.circuits.push(ShallowCircuit::from_generated_circuit(
                 circuit,
                 need_stable,
                 need_fast,
                 request.time.clone(),
-                Some(request.time.clone()),
+                Some(request.time.clone()), // circuit is dirty
+                None,                       // this is not to cover a port need
             ));
             chosen_circ = self.circuits.last();
         }
         let chosen_circ = chosen_circ.unwrap(); // cannot fail as the if block adds an element if there was none
         observer.notify_circuit_used(chosen_circ, &request);
+
+        // Now that we used a circuit to meet a stream request, remember the need for this port
+        // so we build appropriate circuits in advance to future requests to the same port.
+        // (In TorPS, this is `stream_update_port_needs()`.)
+        {
+            let port = request.port;
+            let fast = true;
+            let stable = LONG_LIVED_PORTS.contains(&request.port);
+
+            // add need or update expiration
+            self.port_needs.add_need(port, &request.time, fast, stable);
+
+            // check if this need can be covered by an existing, clean circuit
+            let need_handle = self.port_needs.cover_need_if_necessary(port);
+
+            if let Some(need_handle) = need_handle {
+                // the need is now covered because we have created a handle, but
+                // if we cannot actually cover the need, the handle will be dropped
+                // and the "covered" counter is reset
+
+                'circuit_loop: for circuit in
+                    self.circuits.iter_mut().filter(|c| c.dirty_time.is_none())
+                {
+                    // ignore this circuit if it covers the port already
+                    for existing_cover in circuit.covered_needs.iter() {
+                        if let Some(existing_port) = existing_cover.get_port() {
+                            if existing_port == port {
+                                continue 'circuit_loop;
+                            }
+                        }
+                    }
+
+                    if need_handle.can_be_covered_by_circuit(circuit, circgen) {
+                        // cover this need
+                        circuit.covered_needs.push(need_handle);
+                        break;
+                    }
+                }
+            }
+        }
 
         Ok(())
     }
@@ -332,11 +424,18 @@ impl CircuitManager {
         for circ in self.circuits.iter_mut() {
             if circ.dirty_time.is_none() {
                 if circ.supports_stream(&request, circgen) {
-                    // make this circuit dirty
                     // TODO make sure we check somewhere else circuit_idle_timeout
                     // TODO Do we maybe have to reorder the circuits? TorPS uses .appendleft()
+
+                    // make this circuit dirty
                     circ.dirty_time = Some(request.time.clone());
-                    // TODO reduce cover count for covered port needs
+
+                    // As this circuit is now in use, it doesn't cover the port needs
+                    // it may have covered before (not spare anymore). We thus
+                    // need to remove its covered `NeedHandle`s, which will
+                    // pick up the neccessity for a new need cover.
+                    circ.covered_needs.clear();
+
                     return Some(circ);
                 }
             }
