@@ -1121,6 +1121,7 @@ dependencies = [
  "sha1",
  "tor-circuit-generator",
  "tordoc",
+ "twox-hash",
 ]
 
 [[package]]

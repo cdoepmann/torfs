@@ -12,6 +12,7 @@ mod observer;
 mod sim;
 mod user;
 use sim::Simulator;
+mod reproducible_hash_map;
 mod seeded_rand;
 mod utils;
 
