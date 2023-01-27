@@ -87,23 +87,24 @@ impl NeedsContainer {
         );
     }
 
-    /// Add a need to be covered by circuits.
+    /// Add a need to be covered by circuits and return a `String` representation of it.
     ///
     /// There can only be one need per port. If one already exists for `port`,
     /// then it isn't re-inserted. In particular, the `fast` and `stable` flags aren't
     /// updated. If the need has expired, though, the expiration date is updated.
     /// This is in line with TorPS's `stream_update_port_needs` behavior.
-    pub fn add_need(&mut self, port: u16, now: &DateTime<Utc>, fast: bool, stable: bool) {
+    pub fn add_need(&mut self, port: u16, now: &DateTime<Utc>, fast: bool, stable: bool) -> String {
         match self.needs.entry(port) {
             Occupied(mut entry) => {
                 let need = entry.get_mut();
                 if need.has_expired(now) {
                     need.reset_expiration(now);
                 }
+                need.to_string()
             }
             Vacant(entry) => {
-                let need = Need::new(port, now, fast, stable);
-                entry.insert(Rc::new(need));
+                let need = Rc::new(Need::new(port, now, fast, stable));
+                entry.insert(need).to_string()
             }
         }
     }

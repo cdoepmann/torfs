@@ -279,6 +279,10 @@ impl ClientObserver {
         });
     }
 
+    pub(crate) fn notify_new_need(&mut self, time: &DateTime<Utc>, need: String) {
+        trace!("[{}] Client {}: new {}.", &time, self.client_id, need);
+    }
+
     pub(crate) fn notify_need_expired(&mut self, time: &DateTime<Utc>, need: String) {
         trace!("[{}] Client {}: {} expired.", &time, self.client_id, need);
     }

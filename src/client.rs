@@ -214,7 +214,8 @@ impl CircuitManager {
     ) -> anyhow::Result<()> {
         // When being used for the first time, set an initial port need.
         if let None = self.last_triggered {
-            self.port_needs.add_need(80, time, true, false);
+            let need_string = self.port_needs.add_need(80, time, true, false);
+            observer.notify_new_need(time, need_string);
         };
         self.last_triggered = Some(time.clone());
 
@@ -363,7 +364,8 @@ impl CircuitManager {
             let stable = LONG_LIVED_PORTS.contains(&request.port);
 
             // add need or update expiration
-            self.port_needs.add_need(port, &request.time, fast, stable);
+            let need_string = self.port_needs.add_need(port, &request.time, fast, stable);
+            observer.notify_new_need(&request.time, need_string);
 
             // check if this need can be covered by an existing, clean circuit
             let need_handle = self.port_needs.cover_need_if_necessary(port);
