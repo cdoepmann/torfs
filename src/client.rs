@@ -167,7 +167,7 @@ impl ShallowCircuit {
     ///
     /// _May_ panic if the circuit's relays aren't part of the consensus.
     fn supports_stream(&self, request: &Request, circgen: &CircuitGenerator) -> bool {
-        if !self.is_internal {
+        if self.is_internal {
             return false;
         }
 
