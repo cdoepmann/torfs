@@ -11,6 +11,17 @@ pub trait RetainOrElseVec {
     where
         F: FnMut(&Self::Item) -> bool,
         G: FnMut(&Self::Item);
+
+    /// Remove the elements specified by the predicate and call another functor
+    /// for them, for side-effects.
+    fn remove_if<F, G>(&mut self, f: F, g: G)
+    where
+        F: FnMut(&Self::Item) -> bool,
+        G: FnMut(&Self::Item),
+    {
+        let mut f = f;
+        RetainOrElseVec::retain_or_else(self, |x| !f(x), g)
+    }
 }
 
 impl<T> RetainOrElseVec for Vec<T> {

@@ -2,6 +2,7 @@
 
 use std::iter::Peekable;
 
+use crate::guard::GuardHandling;
 use crate::needs::{NeedHandle, NeedsContainer};
 use crate::observer::{CircuitCloseReason, ClientObserver};
 use crate::user::{Request, UserModel};
@@ -192,6 +193,8 @@ struct CircuitManager {
     port_needs: NeedsContainer,
     /// Last time the time-based update was triggered
     last_triggered: Option<DateTime<Utc>>,
+    /// Handler for this client's guard set
+    guards: GuardHandling,
 }
 
 impl CircuitManager {
@@ -201,6 +204,7 @@ impl CircuitManager {
             circuits: Vec::new(),
             port_needs: NeedsContainer::new(),
             last_triggered: None,
+            guards: GuardHandling::new(),
         }
     }
 
@@ -274,6 +278,9 @@ impl CircuitManager {
             |circuit| observer.notify_circuit_closed(time, circuit, CircuitCloseReason::Down),
         );
 
+        // Trigger the guard handling
+        self.guards.timed_updates(time, circgen, observer);
+
         // Cover uncovered port needs
         while let Some(need_handle) = self.port_needs.get_uncovered_need() {
             // build a suitable circuit for this need
@@ -283,8 +290,10 @@ impl CircuitManager {
             let need_stable = need_handle.get_stable().unwrap();
             let need_fast = need_handle.get_fast().unwrap();
 
+            let guard = self.guards.get_guard_for_circuit(time, circgen);
+
             let circuit = circgen
-                .build_circuit_with_flags(3, port, need_fast, need_stable)
+                .build_circuit_with_flags_and_guard(3, port, Some(&guard), need_fast, need_stable)
                 .map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
             observer.notify_new_circuit(
                 time.clone(),
@@ -333,8 +342,16 @@ impl CircuitManager {
             let need_stable = LONG_LIVED_PORTS.contains(&request.port);
             let need_fast = true;
 
+            let guard = self.guards.get_guard_for_circuit(&request.time, circgen);
+
             let circuit = circgen
-                .build_circuit_with_flags(3, request.port, need_fast, need_stable)
+                .build_circuit_with_flags_and_guard(
+                    3,
+                    request.port,
+                    Some(&guard),
+                    need_fast,
+                    need_stable,
+                )
                 .map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
             observer.notify_new_circuit(
                 request.time,
@@ -354,6 +371,10 @@ impl CircuitManager {
         }
         let chosen_circ = chosen_circ.unwrap(); // cannot fail as the if block adds an element if there was none
         observer.notify_circuit_used(chosen_circ, &request);
+
+        let guard_fingerprint = chosen_circ.guard.clone();
+        self.guards
+            .mark_as_confirmed(&guard_fingerprint, &request.time);
 
         // Now that we used a circuit to meet a stream request, remember the need for this port
         // so we build appropriate circuits in advance to future requests to the same port.

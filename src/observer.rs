@@ -286,4 +286,22 @@ impl ClientObserver {
     pub(crate) fn notify_need_expired(&mut self, time: &DateTime<Utc>, need: String) {
         trace!("[{}] Client {}: {} expired.", &time, self.client_id, need);
     }
+
+    pub(crate) fn notify_guard_removed_offline(&mut self, time: &DateTime<Utc>, fp: &Fingerprint) {
+        trace!(
+            "[{}] Client {}: Removed guard {} because it has been offline for too long.",
+            &time,
+            self.client_id,
+            fp,
+        );
+    }
+
+    pub(crate) fn notify_guard_removed_too_old(&mut self, time: &DateTime<Utc>, fp: &Fingerprint) {
+        trace!(
+            "[{}] Client {}: Removed guard {} because it is too old.",
+            &time,
+            self.client_id,
+            fp,
+        );
+    }
 }
