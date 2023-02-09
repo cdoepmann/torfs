@@ -903,6 +903,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8132065adcfd6e02db789d9285a0deb2f3fcb04002865ab67d5fb103533898"
 
 [[package]]
+name = "seeded_rand"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "rand 0.8.5",
+ "rand_chacha",
+ "sha1",
+ "twox-hash",
+]
+
+[[package]]
 name = "serde"
 version = "1.0.150"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1075,6 +1086,7 @@ dependencies = [
  "rand_chacha",
  "rand_distr",
  "regex 1.7.0",
+ "seeded_rand",
  "serde",
  "serde_json",
  "sha1",
@@ -1116,12 +1128,10 @@ dependencies = [
  "lazy_static",
  "log",
  "rand 0.8.5",
- "rand_chacha",
  "regex 1.7.0",
- "sha1",
+ "seeded_rand",
  "tor-circuit-generator",
  "tordoc",
- "twox-hash",
 ]
 
 [[package]]

@@ -2,8 +2,8 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::seeded_rand::get_rng;
 use rand::Rng;
+use seeded_rand::get_rng;
 
 /// A user behavior model that determines when to initiate which kind of
 /// traffic through the Tor network.

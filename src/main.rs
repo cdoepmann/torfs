@@ -14,8 +14,6 @@ mod user;
 use sim::Simulator;
 mod guard;
 mod needs;
-mod reproducible_hash_map;
-mod seeded_rand;
 mod utils;
 
 fn main() -> anyhow::Result<()> {
@@ -24,7 +22,7 @@ fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
-    seeded_rand::set_seed(if cli.seed == 0 {
+    let seed = if cli.seed == 0 {
         let new_seed = seeded_rand::generate_random_seed();
         info!(
             "No seed was given. Call with \"--seed {}\" to reproduce this run.",
@@ -33,7 +31,8 @@ fn main() -> anyhow::Result<()> {
         new_seed
     } else {
         cli.seed
-    });
+    };
+    seeded_rand::set_seed(seed);
 
     let simulator = Simulator::new(cli);
     simulator.run()?;

@@ -9,7 +9,6 @@
 //! - handle
 
 use crate::client::ShallowCircuit;
-use crate::reproducible_hash_map::RHashMap;
 use crate::utils::*;
 
 use std::cell::{Cell, RefCell};
@@ -20,6 +19,7 @@ use std::rc::{Rc, Weak};
 use chrono::prelude::*;
 use chrono::Duration;
 use lazy_static::lazy_static;
+use seeded_rand::RHashMap;
 use tor_circuit_generator::CircuitGenerator;
 
 lazy_static! {

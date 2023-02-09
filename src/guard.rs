@@ -13,13 +13,12 @@ use std::borrow::Borrow;
 use std::cmp::min;
 
 use crate::observer::ClientObserver;
-use crate::reproducible_hash_map::RHashSet;
-use crate::seeded_rand::get_rng;
 
 use chrono::prelude::*;
 use chrono::Duration;
 use lazy_static::lazy_static;
 use rand::Rng;
+use seeded_rand::{get_rng, RHashSet};
 use tor_circuit_generator::CircuitGenerator;
 use tordoc::{consensus::Flag, Fingerprint};
 

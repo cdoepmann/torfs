@@ -12,11 +12,9 @@ chrono = "0.4"
 regex = "1"
 tordoc = {path = "../tordoc"}
 tor-circuit-generator = { path = "../tor-circuit-generator"}
+seeded_rand = { path = "../seeded_rand"}
 log = "0.4"
 env_logger = "0.10.0"
-sha1 = "0.10.1"
 rand = "0.8.5"
-rand_chacha = "0.3.1"
 lazy_static = "1.4.0"
-twox-hash = "1.6.2"
 itertools = "0.10"
