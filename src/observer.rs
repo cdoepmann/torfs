@@ -262,7 +262,7 @@ impl ClientObserver {
         reason: CircuitCloseReason,
     ) {
         trace!(
-            "[{}] Client {} closed the following circuit becausee of \"{:?}\": {} {} {}",
+            "[{}] Client {} closed the following circuit because of \"{:?}\": {} {} {}",
             &time,
             self.client_id,
             reason,

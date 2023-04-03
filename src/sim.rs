@@ -87,9 +87,6 @@ impl Simulator {
             let range_end = std::cmp::min(range_end, end_time);
 
             let circgen = CircuitGenerator::new(&consensus, descriptors, vec![443, 80, 22]);
-            circgen
-                .build_circuit(3, 443)
-                .map_err(|_| anyhow::anyhow!("error building circuit"))?;
 
             // Trigger clients
             for client in clients.iter_mut() {

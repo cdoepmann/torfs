@@ -152,12 +152,12 @@ impl NeedHandle {
         self.need.upgrade().map(|need| need.port)
     }
 
-    /// Get the needed port, if the need still exists.
+    /// Get the needed fast flag, if the need still exists.
     pub fn get_fast(&self) -> Option<bool> {
         self.need.upgrade().map(|need| need.fast)
     }
 
-    /// Get the needed port, if the need still exists.
+    /// Get the needed stable flag, if the need still exists.
     pub fn get_stable(&self) -> Option<bool> {
         self.need.upgrade().map(|need| need.stable)
     }

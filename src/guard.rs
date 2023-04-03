@@ -33,6 +33,7 @@ lazy_static! {
     static ref N_USABLE_PRIMARY_GUARDS: usize = 1;
 }
 
+#[derive(Debug)]
 pub(crate) struct GuardHandling {
     sampled_guards: Vec<SampledGuard>,
     confirmed_guards: Vec<ConfirmedGuard>,
@@ -98,6 +99,8 @@ impl GuardHandling {
             self.confirmed_guards
                 .retain(|guard| !guards_to_remove.contains(&guard.fingerprint));
         }
+
+        self.recompute_primary_guards();
     }
 
     fn recompute_primary_guards(&mut self) {
@@ -231,6 +234,7 @@ impl GuardHandling {
     }
 }
 
+#[derive(Debug)]
 struct ConfirmedGuard {
     fingerprint: Fingerprint,
     confirmed_on: DateTime<Utc>,
@@ -245,6 +249,7 @@ impl ConfirmedGuard {
     }
 }
 
+#[derive(Debug)]
 struct SampledGuard {
     fingerprint: Fingerprint,
     added_on: DateTime<Utc>,
