@@ -1,7 +1,7 @@
 //! The (abstract) simulator and simulation environment
 
 use anyhow;
-use chrono::prelude::*;
+use anyhow::Context;
 #[allow(unused_imports)]
 use log::{debug, info, trace, warn};
 
@@ -9,7 +9,7 @@ use tor_circuit_generator::CircuitGenerator;
 
 use crate::cli::Cli;
 use crate::client::Client;
-use crate::input::{ConsensusHandle, TorArchive};
+use crate::input::TorArchive;
 use crate::observer::SimulationObserver;
 use crate::user::DummyUser;
 
@@ -64,7 +64,9 @@ impl Simulator {
 
             let (consensus, descriptors) = consensus_result?;
 
-            let range_start = &consensus.valid_after;
+            let range_start = &consensus
+                .valid_after
+                .context("consensus missing valid_after")?;
             trace!(
                 "Entering simulation epoch with consensus from {}",
                 &range_start
@@ -76,7 +78,9 @@ impl Simulator {
                     // This will ignore errors in the next consensus for now (we only
                     // have a reference, so cannot return them easily), but these
                     // will be handled in the next iteration
-                    next_consensus.valid_after
+                    next_consensus
+                        .valid_after
+                        .context("consensus missing valid_after")?
                 }
                 _ => {
                     // Otherwise, use this consensus's valid_until
@@ -86,7 +90,9 @@ impl Simulator {
             };
             let range_end = std::cmp::min(range_end, end_time);
 
-            let circgen = CircuitGenerator::new(&consensus, descriptors, vec![443, 80, 22]);
+            let circgen = CircuitGenerator::new(&consensus, descriptors, vec![443, 80, 22])
+                .map_err(|e| anyhow::anyhow!(e))
+                .context("Failed to construct circuit generator")?;
 
             // Trigger clients
             for client in clients.iter_mut() {
