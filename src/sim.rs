@@ -7,6 +7,7 @@ use log::{debug, info, trace, warn};
 
 use tor_circuit_generator::CircuitGenerator;
 
+use crate::adversaries::Adversary;
 use crate::cli::Cli;
 use crate::client::Client;
 use crate::input::TorArchive;
@@ -25,6 +26,9 @@ impl Simulator {
 
     /// Run the simulation
     pub(crate) fn run(self) -> anyhow::Result<SimulationObserver> {
+        // configure adversary
+        let adversary = Adversary::new(&self.cli);
+
         info!("Finding consensuses");
         let archive = TorArchive::new(self.cli.tor_data)?;
         let consensus_handles = archive.find_consensuses(&self.cli.from, &self.cli.to)?;
@@ -62,12 +66,12 @@ impl Simulator {
         while let Some(consensus_result) = consensus_iterator.next() {
             // we cannot use a for loop here because then we couldn't call .peek() on the iterator
 
-            let (consensus, descriptors) = consensus_result?;
+            let (mut consensus, mut descriptors) = consensus_result?;
 
             let range_start = &consensus
                 .valid_after
                 .context("consensus missing valid_after")?;
-            trace!(
+            info!(
                 "Entering simulation epoch with consensus from {}",
                 &range_start
             );
@@ -90,6 +94,9 @@ impl Simulator {
             };
             let range_end = std::cmp::min(range_end, end_time);
 
+            // Apply adversarial changes
+            adversary.modify_consensus(&mut consensus, &mut descriptors);
+
             let circgen = CircuitGenerator::new(&consensus, descriptors, vec![443, 80, 22])
                 .map_err(|e| anyhow::anyhow!(e))
                 .context("Failed to construct circuit generator")?;
@@ -101,8 +108,10 @@ impl Simulator {
         }
 
         // Wrap up the simulation
-        let observer =
-            SimulationObserver::from_clients(clients.into_iter().map(|c| c.into_observer()));
+        let observer = SimulationObserver::from_clients(
+            clients.into_iter().map(|c| c.into_observer()),
+            adversary,
+        );
         observer.print();
 
         Ok(observer)

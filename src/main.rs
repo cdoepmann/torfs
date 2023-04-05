@@ -12,6 +12,7 @@ mod observer;
 mod sim;
 mod user;
 use sim::Simulator;
+mod adversaries;
 mod guard;
 mod needs;
 mod utils;

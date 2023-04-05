@@ -9,6 +9,7 @@ use chrono::{DateTime, Utc};
 use tor_circuit_generator::TorCircuit;
 use tordoc::Fingerprint;
 
+use crate::adversaries::Adversary;
 use crate::client;
 use crate::user::Request;
 
@@ -16,38 +17,53 @@ use crate::user::Request;
 use log::{debug, info, trace, warn};
 
 pub(crate) struct SimulationObserver {
-    pub circuit_events: Vec<NewCircuitEvent>,
+    circuit_events: Vec<CircuitUsedEvent>,
+    adversary: Adversary,
 }
 
 impl SimulationObserver {
     /// Construct a new `SimulationObserver` from the finished `ClientObserver`s.
     pub(crate) fn from_clients(
         client_observers: impl IntoIterator<Item = ClientObserver>,
+        adversary: Adversary,
     ) -> SimulationObserver {
         // merge the sorted event vectors into a single one
         use itertools::Itertools;
         let merged_iterator = client_observers
             .into_iter()
             .map(|mut co| {
-                co.events_new_circuit.sort_unstable();
-                co.events_new_circuit.into_iter()
+                co.events_circuit_used.sort_unstable();
+                co.events_circuit_used.into_iter()
             })
             .kmerge();
 
         SimulationObserver {
             circuit_events: merged_iterator.collect(),
+            adversary,
         }
     }
 
     pub(crate) fn print(&self) {
+        let format_with_adv = |fp: &Fingerprint| {
+            format!(
+                "{}{}",
+                fp,
+                if self.adversary.is_adversarial(fp) {
+                    "*"
+                } else {
+                    ""
+                }
+            )
+        };
+
         for circuit_event in self.circuit_events.iter() {
             println!(
-                "[{}] Client {} built circuit: {} {} {}",
+                "[{}] Client {} uses the following circuit for a stream request: {} {} {}",
                 &circuit_event.time,
                 &circuit_event.client_id,
-                circuit_event.circuit.guard.fingerprint,
-                circuit_event.circuit.middle[0].fingerprint,
-                circuit_event.circuit.exit.fingerprint,
+                format_with_adv(&circuit_event.circuit.guard),
+                format_with_adv(&circuit_event.circuit.middle),
+                format_with_adv(&circuit_event.circuit.exit),
             );
         }
     }

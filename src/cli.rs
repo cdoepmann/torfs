@@ -27,6 +27,22 @@ pub(crate) struct Cli {
     /// Number of clients
     #[arg(long)]
     pub clients: u64,
+
+    /// Number of adversarial guards
+    #[arg(long, requires = "adv_guards_bw")]
+    pub adv_guards_num: Option<u64>,
+
+    /// Consensus weight per adversarial guard
+    #[arg(long, requires = "adv_guards_num")]
+    pub adv_guards_bw: Option<u64>,
+
+    /// Number of adversarial exits
+    #[arg(long, requires = "adv_exits_bw")]
+    pub adv_exits_num: Option<u64>,
+
+    /// Consensus weight per adversarial exit
+    #[arg(long, requires = "adv_exits_num")]
+    pub adv_exits_bw: Option<u64>,
 }
 
 impl Cli {
