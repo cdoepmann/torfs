@@ -26,6 +26,9 @@ lazy_static! {
     static ref GUARD_LIFETIME: Duration = Duration::days(120);
     static ref REMOVE_UNLISTED_GUARDS_AFTER: Duration = Duration::days(20);
     static ref GUARD_CONFIRMED_MIN_LIFETIME: Duration = Duration::days(60);
+    // static ref GUARD_LIFETIME: Duration = Duration::days(6);
+    // static ref REMOVE_UNLISTED_GUARDS_AFTER: Duration = Duration::days(1);
+    // static ref GUARD_CONFIRMED_MIN_LIFETIME: Duration = Duration::days(3);
     static ref MIN_FILTERED_SAMPLE: usize = 20;
     static ref MAX_SAMPLE_SIZE: usize = 60;
     static ref MAX_SAMPLE_THRESHOLD: f64 = 0.2;

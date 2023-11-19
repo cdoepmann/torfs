@@ -43,6 +43,7 @@ impl Iterator for DummyUser {
 
         // three days for now
         let wait_time = chrono::Duration::seconds(rng.gen_range(0..=60 * 60 * 24 * 3));
+        // let wait_time = chrono::Duration::seconds(600);
         self.current_time += wait_time;
 
         Some(Request {
