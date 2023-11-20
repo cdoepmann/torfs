@@ -27,3 +27,4 @@ time = { version = "0.3.20", features = [
     "serde-human-readable",
     "local-offset",
 ] }
+zstd = "0.12"

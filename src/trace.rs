@@ -1,5 +1,7 @@
 //! Generation of network traces for use in ppcalc
 
+use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -72,7 +74,25 @@ pub fn write_traces_to_file(
 
     builder.fix();
     let trace = builder.build()?;
-    trace.write_to_file(fpath).map_err(|e| anyhow::anyhow!(e))?;
+
+    let fpath = fpath.as_ref();
+    let file_writer: Box<dyn Write> = {
+        let file = fs::File::create(fpath)?;
+
+        if fpath
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .ends_with(".zst")
+        {
+            Box::new(zstd::Encoder::new(file, 16)?.auto_finish())
+        } else {
+            Box::new(file)
+        }
+    };
+    trace
+        .write_to_writer(file_writer)
+        .map_err(|e| anyhow::anyhow!(e))?;
 
     Ok(())
 }

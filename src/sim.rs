@@ -116,7 +116,7 @@ impl Simulator {
             clients.into_iter().map(|c| c.into_observer()),
             adversary,
         );
-        observer.print();
+        // observer.print();
         observer.write_trace(self.cli.output_trace)?;
 
         Ok(())
