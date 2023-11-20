@@ -7,6 +7,7 @@ use markov::Emission;
 
 use std::fs;
 use std::path::Path;
+use std::rc::Rc;
 
 use anyhow;
 use chrono::{DateTime, Utc};
@@ -52,7 +53,7 @@ impl PacketStream {
 /// The parsed model parameters (the Markov chain) for the packet model
 #[derive(Clone)]
 pub struct PacketModelParameters {
-    model: parse::StreamPacketModel,
+    model: Rc<parse::StreamPacketModel>,
 }
 
 impl PacketModelParameters {
@@ -61,13 +62,13 @@ impl PacketModelParameters {
         let data = fs::read_to_string(path)?;
 
         Ok(PacketModelParameters {
-            model: parse::parse_stream_or_packet_model(data)?,
+            model: Rc::new(parse::parse_stream_or_packet_model(data)?),
         })
     }
 
     pub fn make_stream(&self, time: DateTime<Utc>) -> PacketStream {
         PacketStream {
-            chain: markov::MarkovChain::new(self.model.clone(), time),
+            chain: markov::MarkovChain::new((*self.model).clone(), time),
         }
     }
 }
