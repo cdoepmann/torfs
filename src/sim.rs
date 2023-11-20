@@ -12,6 +12,7 @@ use crate::cli::Cli;
 use crate::client::Client;
 use crate::input::TorArchive;
 use crate::observer::SimulationObserver;
+use crate::packet_model::PacketModelParameters;
 use crate::user::DummyUser;
 
 pub(crate) struct Simulator {
@@ -25,7 +26,7 @@ impl Simulator {
     }
 
     /// Run the simulation
-    pub(crate) fn run(self) -> anyhow::Result<SimulationObserver> {
+    pub(crate) fn run(self) -> anyhow::Result<()> {
         // configure adversary
         let adversary = Adversary::new(&self.cli);
 
@@ -46,9 +47,12 @@ impl Simulator {
             );
         }
 
+        info!("Parsing packet model");
+        let packet_model = PacketModelParameters::new(&self.cli.packet_model)?;
+
         info!("Creating {} clients", self.cli.clients);
         let mut clients: Vec<_> = (0..self.cli.clients)
-            .map(|id| Client::new(id, DummyUser::new(start_time.clone())))
+            .map(|id| Client::new(id, DummyUser::new(start_time.clone()), packet_model.clone()))
             .collect();
 
         // Iterate over the consensus handles for the simulation duration.
@@ -113,7 +117,8 @@ impl Simulator {
             adversary,
         );
         observer.print();
+        observer.write_trace(self.cli.output_trace)?;
 
-        Ok(observer)
+        Ok(())
     }
 }

@@ -43,6 +43,14 @@ pub(crate) struct Cli {
     /// Consensus weight per adversarial exit
     #[arg(long, requires = "adv_exits_num")]
     pub adv_exits_bw: Option<u64>,
+
+    /// Path to the (prepared) packet model JSON file
+    #[arg(long, value_name = "FILE", value_hint = clap::ValueHint::FilePath)]
+    pub packet_model: PathBuf,
+
+    /// Path to the output message trace file
+    #[arg(long, value_name = "FILE", value_hint = clap::ValueHint::FilePath)]
+    pub output_trace: PathBuf,
 }
 
 impl Cli {

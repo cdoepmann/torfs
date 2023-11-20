@@ -1,0 +1,1092 @@
+{
+    "directed": true,
+    "multigraph": false,
+    "graph": {
+        "node_default": "",
+        "edge_default": ""
+    },
+    "nodes": [
+        {
+            "type": "state",
+            "id": "m1s7"
+        },
+        {
+            "type": "state",
+            "id": "m1s6"
+        },
+        {
+            "type": "state",
+            "id": "m1s5"
+        },
+        {
+            "type": "state",
+            "id": "m1s4"
+        },
+        {
+            "type": "state",
+            "id": "m1s3"
+        },
+        {
+            "type": "state",
+            "id": "m1s2"
+        },
+        {
+            "type": "state",
+            "id": "m1s1"
+        },
+        {
+            "type": "state",
+            "id": "m1s0"
+        },
+        {
+            "type": "state",
+            "id": "m0sEnd"
+        },
+        {
+            "type": "state",
+            "id": "m2s1"
+        },
+        {
+            "type": "observation",
+            "id": "+"
+        },
+        {
+            "type": "observation",
+            "id": "-"
+        },
+        {
+            "type": "state",
+            "id": "m2s0"
+        },
+        {
+            "id": "start"
+        },
+        {
+            "type": "state",
+            "id": "m2s2"
+        },
+        {
+            "type": "state",
+            "id": "m2s3"
+        },
+        {
+            "type": "state",
+            "id": "m2s4"
+        },
+        {
+            "type": "state",
+            "id": "m2s5"
+        },
+        {
+            "type": "state",
+            "id": "m2s6"
+        },
+        {
+            "type": "state",
+            "id": "m2s7"
+        },
+        {
+            "type": "state",
+            "id": "m1sEnd"
+        },
+        {
+            "type": "observation",
+            "id": "F"
+        },
+        {
+            "type": "state",
+            "id": "m2sEnd"
+        },
+        {
+            "type": "state",
+            "id": "m0s6"
+        },
+        {
+            "type": "state",
+            "id": "m0s7"
+        },
+        {
+            "type": "state",
+            "id": "m0s4"
+        },
+        {
+            "type": "state",
+            "id": "m0s5"
+        },
+        {
+            "type": "state",
+            "id": "m0s2"
+        },
+        {
+            "type": "state",
+            "id": "m0s3"
+        },
+        {
+            "type": "state",
+            "id": "m0s0"
+        },
+        {
+            "type": "state",
+            "id": "m0s1"
+        }
+    ],
+    "links": [
+        {
+            "type": "transition",
+            "weight": 0.99484845157,
+            "source": "m1s7",
+            "target": "m1s6"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.153785791586,
+            "weight": 0.0306214303757,
+            "lognorm_mu": 1.42432742759,
+            "source": "m1s7",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.510741630059,
+            "weight": 0.969378569624,
+            "lognorm_mu": 1.26523803512,
+            "source": "m1s7",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.00515154843,
+            "source": "m1s7",
+            "target": "m1s3"
+        },
+        {
+            "type": "transition",
+            "weight": 0.840102538383,
+            "source": "m1s6",
+            "target": "m1s5"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0137774696465,
+            "source": "m1s6",
+            "target": "m1s4"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0173996894046,
+            "source": "m1s6",
+            "target": "m1sEnd"
+        },
+        {
+            "type": "transition",
+            "weight": 0.120959947364,
+            "source": "m1s6",
+            "target": "m1s1"
+        },
+        {
+            "type": "transition",
+            "weight": 0.00776035520175,
+            "source": "m1s6",
+            "target": "m1s0"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 1.39010535689,
+            "weight": 0.0621886960134,
+            "lognorm_mu": 11.7326054505,
+            "source": "m1s6",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 3.16512837069,
+            "weight": 0.937811303987,
+            "lognorm_mu": 7.56938680699,
+            "source": "m1s6",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.393131648449,
+            "source": "m1s5",
+            "target": "m1s7"
+        },
+        {
+            "type": "transition",
+            "weight": 0.549038636153,
+            "source": "m1s5",
+            "target": "m1s5"
+        },
+        {
+            "type": "transition",
+            "weight": 0.000770426568341,
+            "source": "m1s5",
+            "target": "m1sEnd"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0570592888293,
+            "source": "m1s5",
+            "target": "m1s1"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0543894795801,
+            "weight": 0.000174763604535,
+            "lognorm_mu": 2.42626189048,
+            "source": "m1s5",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.49799002894,
+            "weight": 0.999825236395,
+            "lognorm_mu": 1.26908902068,
+            "source": "m1s5",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.473827400947,
+            "source": "m1s4",
+            "target": "m1s7"
+        },
+        {
+            "type": "transition",
+            "weight": 0.526172599053,
+            "source": "m1s4",
+            "target": "m1s6"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.280443106127,
+            "weight": 0.993270980005,
+            "lognorm_mu": 12.054129973,
+            "source": "m1s4",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.111762588735,
+            "weight": 0.00672901999454,
+            "lognorm_mu": 3.86514078734,
+            "source": "m1s4",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0828466436561,
+            "source": "m1s3",
+            "target": "m1s7"
+        },
+        {
+            "type": "transition",
+            "weight": 0.111097588531,
+            "source": "m1s3",
+            "target": "m1s6"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 4.93661298822,
+            "weight": 0.984004069615,
+            "lognorm_mu": 3.74518695256,
+            "source": "m1s3",
+            "target": "+"
+        },
+        {
+            "type": "transition",
+            "weight": 0.806055767813,
+            "source": "m1s3",
+            "target": "m1s4"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.01,
+            "weight": 0.0159959303855,
+            "lognorm_mu": 2.10040450236,
+            "source": "m1s3",
+            "target": "-"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.653614796695,
+            "weight": 0.955267582678,
+            "lognorm_mu": 1.4995452347,
+            "source": "m1s2",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0129441936121,
+            "weight": 0.0447324173221,
+            "lognorm_mu": 8.76902556771,
+            "source": "m1s2",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.155936233092,
+            "source": "m1s1",
+            "target": "m1s7"
+        },
+        {
+            "type": "transition",
+            "weight": 0.131687009501,
+            "source": "m1s1",
+            "target": "m1s6"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0966806759417,
+            "source": "m1s1",
+            "target": "m1s5"
+        },
+        {
+            "type": "transition",
+            "weight": 0.485251265125,
+            "source": "m1s1",
+            "target": "m1s4"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0624115309762,
+            "source": "m1s1",
+            "target": "m1s1"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0680332853641,
+            "source": "m1s1",
+            "target": "m1s0"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 5.21070809418,
+            "weight": 0.122648149429,
+            "lognorm_mu": 5.83179768494,
+            "source": "m1s1",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 2.13102489343,
+            "weight": 0.877351850571,
+            "lognorm_mu": 12.3782858286,
+            "source": "m1s1",
+            "target": "-"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 1.31830853839,
+            "weight": 0.0765998497541,
+            "lognorm_mu": 11.4038990358,
+            "source": "m1s0",
+            "target": "-"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 3.32456079666,
+            "weight": 0.923400150246,
+            "lognorm_mu": 12.2431951118,
+            "source": "m1s0",
+            "target": "+"
+        },
+        {
+            "type": "transition",
+            "weight": 0.252938361104,
+            "source": "m1s0",
+            "target": "m1s3"
+        },
+        {
+            "type": "transition",
+            "weight": 0.723101004894,
+            "source": "m1s0",
+            "target": "m1sEnd"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0239606340017,
+            "source": "m1s0",
+            "target": "m1s0"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0,
+            "weight": 1.0,
+            "lognorm_mu": 0.0,
+            "source": "m0sEnd",
+            "target": "F"
+        },
+        {
+            "type": "transition",
+            "weight": 0.954500282636,
+            "source": "m2s1",
+            "target": "m2s1"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 3.10012021066,
+            "weight": 3.68513898988e-05,
+            "lognorm_mu": 1.59897286161,
+            "source": "m2s1",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.775909151033,
+            "weight": 0.99996314861,
+            "lognorm_mu": 1.21785567906,
+            "source": "m2s1",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0454997173637,
+            "source": "m2s1",
+            "target": "m2s5"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0387609561315,
+            "weight": 0.498920380965,
+            "lognorm_mu": 0.582269169934,
+            "source": "m2s0",
+            "target": "-"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 2.09360506002,
+            "weight": 0.501079619035,
+            "lognorm_mu": 5.68470233011,
+            "source": "m2s0",
+            "target": "+"
+        },
+        {
+            "type": "transition",
+            "weight": 0.843212412237,
+            "source": "m2s0",
+            "target": "m2s3"
+        },
+        {
+            "type": "transition",
+            "weight": 0.156728788391,
+            "source": "m2s0",
+            "target": "m2s4"
+        },
+        {
+            "type": "transition",
+            "weight": 5.87993716248e-05,
+            "source": "m2s0",
+            "target": "m2s7"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0122265817597,
+            "source": "start",
+            "target": "m1s7"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0817713232861,
+            "source": "start",
+            "target": "m1s4"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0483118951201,
+            "source": "start",
+            "target": "m1s0"
+        },
+        {
+            "type": "transition",
+            "weight": 0.000112108827129,
+            "source": "start",
+            "target": "m0s3"
+        },
+        {
+            "type": "transition",
+            "weight": 0.345695762853,
+            "source": "start",
+            "target": "m2s6"
+        },
+        {
+            "type": "transition",
+            "weight": 0.484222335337,
+            "source": "start",
+            "target": "m0s1"
+        },
+        {
+            "type": "transition",
+            "weight": 0.027659992816,
+            "source": "start",
+            "target": "m2s5"
+        },
+        {
+            "type": "transition",
+            "weight": 0.000220807739707,
+            "source": "m2s2",
+            "target": "m2s1"
+        },
+        {
+            "type": "transition",
+            "weight": 0.696667485614,
+            "source": "m2s2",
+            "target": "m2s2"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.42604844788,
+            "weight": 9.37631918206e-05,
+            "lognorm_mu": 0.38003967175,
+            "source": "m2s2",
+            "target": "-"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.756570461146,
+            "weight": 0.999906236808,
+            "lognorm_mu": 1.24451480411,
+            "source": "m2s2",
+            "target": "+"
+        },
+        {
+            "type": "transition",
+            "weight": 0.303111706646,
+            "source": "m2s2",
+            "target": "m2s6"
+        },
+        {
+            "type": "transition",
+            "weight": 0.00363674794907,
+            "source": "m2s3",
+            "target": "m2sEnd"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0129441936121,
+            "weight": 2.50544434362e-05,
+            "lognorm_mu": 4.12522446034,
+            "source": "m2s3",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.490067435558,
+            "weight": 0.999974945557,
+            "lognorm_mu": 1.53515574278,
+            "source": "m2s3",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.277400035062,
+            "source": "m2s3",
+            "target": "m2s0"
+        },
+        {
+            "type": "transition",
+            "weight": 0.000263436392039,
+            "source": "m2s3",
+            "target": "m2s2"
+        },
+        {
+            "type": "transition",
+            "weight": 0.718699780597,
+            "source": "m2s3",
+            "target": "m2s6"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0663778002052,
+            "source": "m2s4",
+            "target": "m2sEnd"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 4.78264707619,
+            "weight": 0.633534780895,
+            "lognorm_mu": 7.2449653309,
+            "source": "m2s4",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 3.73181088586,
+            "weight": 0.366465219105,
+            "lognorm_mu": 10.8160376922,
+            "source": "m2s4",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.223797002237,
+            "source": "m2s4",
+            "target": "m2s2"
+        },
+        {
+            "type": "transition",
+            "weight": 0.164734155355,
+            "source": "m2s4",
+            "target": "m2s5"
+        },
+        {
+            "type": "transition",
+            "weight": 0.545091042203,
+            "source": "m2s4",
+            "target": "m2s6"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.933740291319,
+            "weight": 0.0346988396257,
+            "lognorm_mu": 11.9525084041,
+            "source": "m2s5",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.403559042258,
+            "weight": 0.965301160374,
+            "lognorm_mu": 1.14863164203,
+            "source": "m2s5",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 1.0,
+            "source": "m2s5",
+            "target": "m2s6"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0193453690217,
+            "source": "m2s6",
+            "target": "m2sEnd"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 2.8885820784,
+            "weight": 0.147400907603,
+            "lognorm_mu": 10.4084632613,
+            "source": "m2s6",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 3.45917497323,
+            "weight": 0.852599092397,
+            "lognorm_mu": 9.03772513342,
+            "source": "m2s6",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.633772229906,
+            "source": "m2s6",
+            "target": "m2s1"
+        },
+        {
+            "type": "transition",
+            "weight": 0.122641979067,
+            "source": "m2s6",
+            "target": "m2s3"
+        },
+        {
+            "type": "transition",
+            "weight": 0.186648136646,
+            "source": "m2s6",
+            "target": "m2s4"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0375922853586,
+            "source": "m2s6",
+            "target": "m2s6"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 1.0941713006,
+            "weight": 0.72498630379,
+            "lognorm_mu": 0.108782059159,
+            "source": "m2s7",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.681488767518,
+            "weight": 0.27501369621,
+            "lognorm_mu": 0.631841694375,
+            "source": "m2s7",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 1.0,
+            "source": "m2s7",
+            "target": "m2sEnd"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0,
+            "weight": 1.0,
+            "lognorm_mu": 0.0,
+            "source": "m1sEnd",
+            "target": "F"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0,
+            "weight": 1.0,
+            "lognorm_mu": 0.0,
+            "source": "m2sEnd",
+            "target": "F"
+        },
+        {
+            "type": "transition",
+            "weight": 0.953366232857,
+            "source": "m0s6",
+            "target": "m0s7"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0218191614029,
+            "weight": 0.0135084675211,
+            "lognorm_mu": 3.74376887218,
+            "source": "m0s6",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.297294206392,
+            "weight": 0.986491532479,
+            "lognorm_mu": 1.15242473346,
+            "source": "m0s6",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0330450504663,
+            "source": "m0s6",
+            "target": "m0s2"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0135887166762,
+            "source": "m0s6",
+            "target": "m0s3"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 5.71172290251,
+            "weight": 0.00280860635941,
+            "lognorm_mu": 0.531008790924,
+            "source": "m0s7",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 5.17937180408,
+            "weight": 0.997191393641,
+            "lognorm_mu": 9.30009119523,
+            "source": "m0s7",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0818778007671,
+            "source": "m0s7",
+            "target": "m0s7"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0668310203036,
+            "source": "m0s7",
+            "target": "m0s4"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0135494345127,
+            "source": "m0s7",
+            "target": "m0s2"
+        },
+        {
+            "type": "transition",
+            "weight": 0.142668540758,
+            "source": "m0s7",
+            "target": "m0s3"
+        },
+        {
+            "type": "transition",
+            "weight": 0.214358970313,
+            "source": "m0s7",
+            "target": "m0s0"
+        },
+        {
+            "type": "transition",
+            "weight": 0.480714233346,
+            "source": "m0s7",
+            "target": "m0s1"
+        },
+        {
+            "type": "transition",
+            "weight": 0.870226627337,
+            "source": "m0s4",
+            "target": "m0s6"
+        },
+        {
+            "type": "transition",
+            "weight": 0.129773372663,
+            "source": "m0s4",
+            "target": "m0s7"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0209929175718,
+            "weight": 0.00251182066044,
+            "lognorm_mu": 0.00696363447118,
+            "source": "m0s4",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 1.08479932803,
+            "weight": 0.99748817934,
+            "lognorm_mu": 1.44055468162,
+            "source": "m0s4",
+            "target": "-"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 3.08485900995,
+            "weight": 0.994760313135,
+            "lognorm_mu": 2.50069142846,
+            "source": "m0s5",
+            "target": "+"
+        },
+        {
+            "type": "transition",
+            "weight": 0.994444090078,
+            "source": "m0s5",
+            "target": "m0s5"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 1.55828848857,
+            "weight": 0.00523968686537,
+            "lognorm_mu": 11.4155494127,
+            "source": "m0s5",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.00158536093244,
+            "source": "m0s5",
+            "target": "m0s0"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0039705489895,
+            "source": "m0s5",
+            "target": "m0s1"
+        },
+        {
+            "type": "transition",
+            "weight": 0.404773294728,
+            "source": "m0s2",
+            "target": "m0s4"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 1.34676378198,
+            "weight": 0.407442506669,
+            "lognorm_mu": 0.119103437735,
+            "source": "m0s2",
+            "target": "-"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0142829509305,
+            "weight": 0.592557493331,
+            "lognorm_mu": 21.6592835996,
+            "source": "m0s2",
+            "target": "+"
+        },
+        {
+            "type": "transition",
+            "weight": 0.595226705272,
+            "source": "m0s2",
+            "target": "m0s1"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0743631142142,
+            "source": "m0s3",
+            "target": "m0s7"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 4.62429251145,
+            "weight": 0.1692503279,
+            "lognorm_mu": 9.72617399038,
+            "source": "m0s3",
+            "target": "+"
+        },
+        {
+            "type": "transition",
+            "weight": 0.924695319142,
+            "source": "m0s3",
+            "target": "m0sEnd"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 5.8049139223,
+            "weight": 0.8307496721,
+            "lognorm_mu": 9.84494978858,
+            "source": "m0s3",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.000941566643431,
+            "source": "m0s3",
+            "target": "m0s0"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.431375322711,
+            "weight": 0.00348354588604,
+            "lognorm_mu": 0.0518478528377,
+            "source": "m0s0",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 1.32364545154,
+            "weight": 0.996516454114,
+            "lognorm_mu": 1.56130797498,
+            "source": "m0s0",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.149945513449,
+            "source": "m0s0",
+            "target": "m0s4"
+        },
+        {
+            "type": "transition",
+            "weight": 0.00195517748974,
+            "source": "m0s0",
+            "target": "m0s5"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0811976976356,
+            "source": "m0s0",
+            "target": "m0s3"
+        },
+        {
+            "type": "transition",
+            "weight": 0.765724590885,
+            "source": "m0s0",
+            "target": "m0s0"
+        },
+        {
+            "type": "transition",
+            "weight": 0.00117702054091,
+            "source": "m0s0",
+            "target": "m0s1"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 4.28875910849,
+            "weight": 0.997487529954,
+            "lognorm_mu": 9.60116673852,
+            "source": "m0s1",
+            "target": "+"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 4.33027469003,
+            "weight": 0.0025124700463,
+            "lognorm_mu": 0.0419403552754,
+            "source": "m0s1",
+            "target": "-"
+        },
+        {
+            "type": "transition",
+            "weight": 0.573038770536,
+            "source": "m0s1",
+            "target": "m0s7"
+        },
+        {
+            "type": "transition",
+            "weight": 0.00705009249496,
+            "source": "m0s1",
+            "target": "m0s5"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0925258422583,
+            "source": "m0s1",
+            "target": "m0s3"
+        },
+        {
+            "type": "transition",
+            "weight": 0.327385294711,
+            "source": "m0s1",
+            "target": "m0s1"
+        }
+    ]
+}

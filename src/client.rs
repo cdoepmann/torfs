@@ -5,6 +5,8 @@ use std::iter::Peekable;
 use crate::guard::GuardHandling;
 use crate::needs::{NeedHandle, NeedsContainer};
 use crate::observer::{CircuitCloseReason, ClientObserver};
+use crate::packet_model::PacketModelParameters;
+use crate::trace::ClientTrace;
 use crate::user::{Request, UserModel};
 use crate::utils::*;
 
@@ -36,16 +38,18 @@ pub(crate) struct Client<U: UserModel> {
     observer: ClientObserver,
     user_model: Peekable<U>,
     circuit_manager: CircuitManager,
+    packet_model: PacketModelParameters,
 }
 
 impl<U: UserModel> Client<U> {
     /// Construct a new Client
-    pub(crate) fn new(id: u64, user_model: U) -> Client<U> {
+    pub(crate) fn new(id: u64, user_model: U, packet_model: PacketModelParameters) -> Client<U> {
         Client {
             id,
             observer: ClientObserver::new(id),
             user_model: user_model.peekable(),
             circuit_manager: CircuitManager::new(),
+            packet_model,
         }
     }
 
@@ -93,8 +97,12 @@ impl<U: UserModel> Client<U> {
                 &mut self.observer,
             )?;
 
-            self.circuit_manager
-                .handle_request(request, circuit_generator, &mut self.observer)?;
+            self.circuit_manager.handle_request(
+                request,
+                circuit_generator,
+                &mut self.observer,
+                &self.packet_model,
+            )?;
         }
 
         Ok(())
@@ -320,6 +328,7 @@ impl CircuitManager {
         request: Request,
         circgen: &CircuitGenerator,
         observer: &mut ClientObserver,
+        packet_model: &PacketModelParameters,
     ) -> anyhow::Result<()> {
         // Unfortunately, we have to split the following two criteria into
         // separate functions to work around one of the current
@@ -369,8 +378,15 @@ impl CircuitManager {
             ));
             chosen_circ = self.circuits.last();
         }
+
+        // We now have a ready-to-use circuit to handle the request
         let chosen_circ = chosen_circ.unwrap(); // cannot fail as the if block adds an element if there was none
-        observer.notify_circuit_used(chosen_circ, &request);
+
+        // Also generate the packet trace
+        let packets = packet_model
+            .make_stream(request.time)
+            .generate_timestamps()?;
+        observer.notify_circuit_used(chosen_circ, &request, packets);
 
         let guard_fingerprint = chosen_circ.guard.clone();
         self.guards

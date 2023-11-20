@@ -15,6 +15,8 @@ use sim::Simulator;
 mod adversaries;
 mod guard;
 mod needs;
+mod packet_model;
+mod trace;
 mod utils;
 
 fn main() -> anyhow::Result<()> {

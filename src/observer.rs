@@ -4,13 +4,16 @@
 //! When the simulation finishes, these are collected into an overall observer object.
 
 use std::cmp::Ordering;
+use std::path::Path;
 
+use anyhow;
 use chrono::{DateTime, Utc};
 use tor_circuit_generator::TorCircuit;
 use tordoc::Fingerprint;
 
 use crate::adversaries::Adversary;
 use crate::client;
+use crate::trace::ClientTrace;
 use crate::user::Request;
 
 #[allow(unused_imports)]
@@ -19,6 +22,7 @@ use log::{debug, info, trace, warn};
 pub(crate) struct SimulationObserver {
     circuit_events: Vec<CircuitUsedEvent>,
     adversary: Adversary,
+    client_traces: Vec<ClientTrace>,
 }
 
 impl SimulationObserver {
@@ -27,11 +31,15 @@ impl SimulationObserver {
         client_observers: impl IntoIterator<Item = ClientObserver>,
         adversary: Adversary,
     ) -> SimulationObserver {
+        let mut client_traces = Vec::new();
+
         // merge the sorted event vectors into a single one
         use itertools::Itertools;
         let merged_iterator = client_observers
             .into_iter()
             .map(|mut co| {
+                client_traces.push(co.trace);
+
                 co.events_circuit_used.sort_unstable();
                 co.events_circuit_used.into_iter()
             })
@@ -40,6 +48,7 @@ impl SimulationObserver {
         SimulationObserver {
             circuit_events: merged_iterator.collect(),
             adversary,
+            client_traces,
         }
     }
 
@@ -66,6 +75,10 @@ impl SimulationObserver {
                 format_with_adv(&circuit_event.circuit.exit),
             );
         }
+    }
+
+    pub(crate) fn write_trace(self, fpath: impl AsRef<Path>) -> anyhow::Result<()> {
+        crate::trace::write_traces_to_file(self.client_traces, fpath)
     }
 }
 
@@ -208,6 +221,7 @@ pub(crate) struct ClientObserver {
     events_new_circuit: Vec<NewCircuitEvent>,
     events_circuit_used: Vec<CircuitUsedEvent>,
     events_circuit_closed: Vec<CircuitClosedEvent>,
+    trace: ClientTrace,
 }
 
 impl ClientObserver {
@@ -218,6 +232,7 @@ impl ClientObserver {
             events_new_circuit: Vec::new(),
             events_circuit_used: Vec::new(),
             events_circuit_closed: Vec::new(),
+            trace: ClientTrace::new(client_id),
         }
     }
 
@@ -252,6 +267,7 @@ impl ClientObserver {
         &mut self,
         circuit: &client::ShallowCircuit,
         request: &Request,
+        timestamps: Vec<DateTime<Utc>>,
     ) {
         trace!(
             "[{}] Client {} uses the following circuit for a stream request: {} {} {}",
@@ -268,6 +284,8 @@ impl ClientObserver {
             circuit: circuit.into(),
             request: request.clone(),
         });
+
+        self.trace.push_stream(timestamps);
     }
 
     /// Notify the observer that a circuit was closed
