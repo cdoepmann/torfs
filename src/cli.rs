@@ -24,9 +24,9 @@ pub(crate) struct Cli {
     #[arg(long, value_name = "YYYY-MM[-DD]", value_parser = parse_simulation_range_edge)]
     pub to: SimulationRangeEdge,
 
-    /// Number of clients
+    /// Number of clients. If omitted, use values from PrivCount measurements.
     #[arg(long)]
-    pub clients: u64,
+    pub clients: Option<u64>,
 
     /// Number of adversarial guards
     #[arg(long, requires = "adv_guards_bw")]
@@ -43,6 +43,10 @@ pub(crate) struct Cli {
     /// Consensus weight per adversarial exit
     #[arg(long, requires = "adv_exits_num")]
     pub adv_exits_bw: Option<u64>,
+
+    /// Path to the (prepared) stream model JSON file
+    #[arg(long, value_name = "FILE", value_hint = clap::ValueHint::FilePath)]
+    pub stream_model: PathBuf,
 
     /// Path to the (prepared) packet model JSON file
     #[arg(long, value_name = "FILE", value_hint = clap::ValueHint::FilePath)]

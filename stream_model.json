@@ -1,0 +1,116 @@
+{
+    "directed": true,
+    "multigraph": false,
+    "graph": {
+        "node_default": "",
+        "edge_default": ""
+    },
+    "nodes": [
+        {
+            "type": "observation",
+            "id": "$"
+        },
+        {
+            "type": "observation",
+            "id": "F"
+        },
+        {
+            "type": "state",
+            "id": "s2End"
+        },
+        {
+            "id": "start"
+        },
+        {
+            "type": "state",
+            "id": "s1Dwell"
+        },
+        {
+            "type": "state",
+            "id": "s0Active"
+        }
+    ],
+    "links": [
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 0.0,
+            "weight": 1.0,
+            "lognorm_mu": 0.0,
+            "source": "s2End",
+            "target": "F"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0365272675619,
+            "source": "start",
+            "target": "s0Active"
+        },
+        {
+            "type": "transition",
+            "weight": 0.963472732438,
+            "source": "start",
+            "target": "s1Dwell"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0,
+            "source": "start",
+            "target": "s2End"
+        },
+        {
+            "type": "transition",
+            "weight": 0.15577865231,
+            "source": "s1Dwell",
+            "target": "s0Active"
+        },
+        {
+            "type": "transition",
+            "weight": 0.727919077528,
+            "source": "s1Dwell",
+            "target": "s1Dwell"
+        },
+        {
+            "exp_lambda": 0.0,
+            "type": "emission",
+            "lognorm_sigma": 6.51435630988,
+            "weight": 1.0,
+            "lognorm_mu": 7.49825116075,
+            "source": "s1Dwell",
+            "target": "$"
+        },
+        {
+            "type": "transition",
+            "weight": 0.116302270162,
+            "source": "s1Dwell",
+            "target": "s2End"
+        },
+        {
+            "type": "transition",
+            "weight": 0.836811553112,
+            "source": "s0Active",
+            "target": "s0Active"
+        },
+        {
+            "type": "transition",
+            "weight": 0.103040753127,
+            "source": "s0Active",
+            "target": "s1Dwell"
+        },
+        {
+            "exp_lambda": 2.94216864497e-07,
+            "type": "emission",
+            "lognorm_sigma": 0.0,
+            "weight": 1.0,
+            "lognorm_mu": 0.0,
+            "source": "s0Active",
+            "target": "$"
+        },
+        {
+            "type": "transition",
+            "weight": 0.0601476937608,
+            "source": "s0Active",
+            "target": "s2End"
+        }
+    ]
+}

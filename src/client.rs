@@ -6,7 +6,6 @@ use crate::guard::GuardHandling;
 use crate::needs::{NeedHandle, NeedsContainer};
 use crate::observer::{CircuitCloseReason, ClientObserver};
 use crate::packet_model::PacketModelParameters;
-use crate::trace::ClientTrace;
 use crate::user::{Request, UserModel};
 use crate::utils::*;
 
@@ -38,18 +37,16 @@ pub(crate) struct Client<U: UserModel> {
     observer: ClientObserver,
     user_model: Peekable<U>,
     circuit_manager: CircuitManager,
-    packet_model: PacketModelParameters,
 }
 
 impl<U: UserModel> Client<U> {
     /// Construct a new Client
-    pub(crate) fn new(id: u64, user_model: U, packet_model: PacketModelParameters) -> Client<U> {
+    pub(crate) fn new(id: u64, user_model: U) -> Client<U> {
         Client {
             id,
             observer: ClientObserver::new(id),
             user_model: user_model.peekable(),
             circuit_manager: CircuitManager::new(),
-            packet_model,
         }
     }
 
@@ -97,12 +94,8 @@ impl<U: UserModel> Client<U> {
                 &mut self.observer,
             )?;
 
-            self.circuit_manager.handle_request(
-                request,
-                circuit_generator,
-                &mut self.observer,
-                &self.packet_model,
-            )?;
+            self.circuit_manager
+                .handle_request(request, circuit_generator, &mut self.observer)?;
         }
 
         Ok(())
@@ -328,7 +321,6 @@ impl CircuitManager {
         request: Request,
         circgen: &CircuitGenerator,
         observer: &mut ClientObserver,
-        packet_model: &PacketModelParameters,
     ) -> anyhow::Result<()> {
         // Unfortunately, we have to split the following two criteria into
         // separate functions to work around one of the current
@@ -337,6 +329,7 @@ impl CircuitManager {
         // See https://blog.rust-lang.org/2022/08/05/nll-by-default.html#looking-forward-what-can-we-expect-for-the-borrow-checker-of-the-future
         // This limitation keeps us from writing the two mutable loops (with early return)
         // in a single function.
+        let mut request = request;
 
         // first check if a dirty circuit is usable
         let mut chosen_circ = self.get_suitable_dirty_circuit(&request, circgen);
@@ -382,11 +375,14 @@ impl CircuitManager {
         // We now have a ready-to-use circuit to handle the request
         let chosen_circ = chosen_circ.unwrap(); // cannot fail as the if block adds an element if there was none
 
-        // Also generate the packet trace
-        let packets = packet_model
-            .make_stream(request.time)
-            .generate_timestamps()?;
-        observer.notify_circuit_used(chosen_circ, &request, packets);
+        // Handle the generated packet trace.
+        // Note that the user model makes sure that it waits with further requests
+        // until all the response packets are over.
+
+        // We "move" the packet trace out of the request object as it is not needed
+        // again later on and we want to avoid cloning it.
+        let packet_timestamps = std::mem::take(&mut request.packet_timestamps);
+        observer.notify_circuit_used(chosen_circ, &request, packet_timestamps);
 
         let guard_fingerprint = chosen_circ.guard.clone();
         self.guards

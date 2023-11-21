@@ -91,6 +91,11 @@ impl MarkovChain {
         return (time, emission);
     }
 
+    /// Move to a new time, but change no other internal state
+    pub fn advance_to(&mut self, new_time: DateTime<Utc>) {
+        self.current_time = new_time;
+    }
+
     /* Takes the parsed JSON and transforms it into our more intuitive model */
     pub fn new(model: StreamPacketModel, current_time: DateTime<Utc>) -> Self {
         let mut start: Option<String> = None;
@@ -283,13 +288,13 @@ impl Display for MarkovAction {
 }
 fn sample_exponential(ex: &MarkovExponential) -> Duration {
     let exp = Exp::new(ex.lambda).unwrap();
-    let v = exp.sample(&mut rand::thread_rng()).round() as i64;
+    let v = exp.sample(&mut get_rng()).round() as i64;
     Duration::microseconds(v)
 }
 
 fn sample_log_normal(lnormal: &MarkovLogNormal) -> Duration {
     let log_normal = LogNormal::new(lnormal.mu, lnormal.sigma).unwrap();
-    let v = log_normal.sample(&mut rand::thread_rng()).round() as i64;
+    let v = log_normal.sample(&mut get_rng()).round() as i64;
     Duration::microseconds(v)
 }
 

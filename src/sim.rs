@@ -12,8 +12,8 @@ use crate::cli::Cli;
 use crate::client::Client;
 use crate::input::TorArchive;
 use crate::observer::SimulationObserver;
-use crate::packet_model::PacketModelParameters;
-use crate::user::DummyUser;
+use crate::packet_model::{PacketModelParameters, StreamModelParameters};
+use crate::user::{get_privcount_circuits_10min, get_privcount_users, PrivcountUser};
 
 pub(crate) struct Simulator {
     cli: Cli,
@@ -47,12 +47,32 @@ impl Simulator {
             );
         }
 
+        info!("Parsing stream model");
+        let stream_model = StreamModelParameters::new(&self.cli.stream_model)?;
+
         info!("Parsing packet model");
         let packet_model = PacketModelParameters::new(&self.cli.packet_model)?;
 
-        info!("Creating {} clients", self.cli.clients);
-        let mut clients: Vec<_> = (0..self.cli.clients)
-            .map(|id| Client::new(id, DummyUser::new(start_time.clone()), packet_model.clone()))
+        let num_clients = self.cli.clients.unwrap_or_else(|| get_privcount_users());
+        // the total number of circuits/flows that are created every 10 minutes
+        let num_circuits_10min = get_privcount_circuits_10min();
+
+        info!(
+            "Creating {} clients that build {:.1} circuits every 10 minutes in total",
+            num_clients, num_circuits_10min
+        );
+        let mut clients: Vec<_> = (0..num_clients)
+            .map(|id| {
+                Client::new(
+                    id,
+                    PrivcountUser::new(
+                        start_time.clone(),
+                        num_circuits_10min as f64 / num_clients as f64,
+                        stream_model.clone(),
+                        packet_model.clone(),
+                    ),
+                )
+            })
             .collect();
 
         // Iterate over the consensus handles for the simulation duration.
