@@ -14,7 +14,8 @@ use crate::utils::*;
 use std::cell::{Cell, RefCell};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Display;
-use std::rc::{Rc, Weak};
+use std::sync::RwLock;
+use std::sync::{Arc, Weak};
 
 use chrono::prelude::*;
 use chrono::Duration;
@@ -34,7 +35,7 @@ lazy_static! {
 ///
 /// This container _owns_ the port needs.
 pub(crate) struct NeedsContainer {
-    needs: RHashMap<u16, Rc<Need>>,
+    needs: RHashMap<u16, Arc<Need>>,
 }
 
 impl NeedsContainer {
@@ -103,7 +104,7 @@ impl NeedsContainer {
                 need.to_string()
             }
             Vacant(entry) => {
-                let need = Rc::new(Need::new(port, now, fast, stable));
+                let need = Arc::new(Need::new(port, now, fast, stable));
                 entry.insert(need).to_string()
             }
         }
@@ -124,12 +125,12 @@ pub(crate) struct NeedHandle {
 
 impl NeedHandle {
     /// TODO
-    fn from_need(need: &Rc<Need>) -> NeedHandle {
+    fn from_need(need: &Arc<Need>) -> NeedHandle {
         // register with the need that we now create a handle to it
         need.increment_cover_count();
 
         NeedHandle {
-            need: Rc::downgrade(need),
+            need: Arc::downgrade(need),
         }
     }
 
@@ -218,11 +219,11 @@ impl Display for NeedHandle {
 #[derive(Debug)]
 struct Need {
     port: u16,
-    expires: RefCell<DateTime<Utc>>,
+    expires: RwLock<DateTime<Utc>>,
     fast: bool,
     stable: bool,
     /// Number of circuits that have a handle to this need, "covering" it
-    covered: Cell<usize>,
+    covered: RwLock<usize>,
 }
 
 impl Display for Need {
@@ -235,10 +236,10 @@ impl Need {
     fn new(port: u16, now: &DateTime<Utc>, fast: bool, stable: bool) -> Need {
         Need {
             port,
-            expires: RefCell::new(*now + *PORT_NEED_LIFETIME),
+            expires: RwLock::new(*now + *PORT_NEED_LIFETIME),
             fast,
             stable,
-            covered: Cell::new(0),
+            covered: RwLock::new(0),
         }
     }
 
@@ -246,35 +247,37 @@ impl Need {
     ///
     /// TODO Panics
     fn decrement_cover_count(&self) {
-        let old_count = self.covered.get();
+        let mut covered = self.covered.write().unwrap();
+        let old_count = *covered;
         assert!(old_count > 0);
-        self.covered.set(old_count - 1);
+        *covered = old_count - 1;
     }
 
     /// TODO
     ///
     /// TODO Panics
     fn increment_cover_count(&self) {
-        let old_count = self.covered.get();
-        self.covered.set(old_count + 1);
+        let mut covered = self.covered.write().unwrap();
+        let old_count = *covered;
+        *covered = old_count + 1;
     }
 
     /// Returns `true` if the need is _not_ sufficiently covered by circuits at the moment
     fn needs_cover(&self) -> bool {
-        self.covered.get() < *PORT_NEED_COVER_NUM
+        *(self.covered.read().unwrap()) < *PORT_NEED_COVER_NUM
     }
 
     /// TODO
     ///
     /// TODO Panics
     fn reset_expiration(&self, now: &DateTime<Utc>) {
-        *self.expires.borrow_mut() = *now + *PORT_NEED_LIFETIME;
+        *self.expires.write().unwrap() = *now + *PORT_NEED_LIFETIME;
     }
 
     /// TODO
     ///
     /// TODO Panics
     fn has_expired(&self, now: &DateTime<Utc>) -> bool {
-        *self.expires.borrow_mut() <= *now
+        *self.expires.write().unwrap() <= *now
     }
 }

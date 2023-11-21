@@ -2,8 +2,10 @@
 
 use anyhow;
 use anyhow::Context;
+use indicatif::ParallelProgressIterator;
 #[allow(unused_imports)]
 use log::{debug, info, trace, warn};
+use rayon::prelude::*;
 
 use tor_circuit_generator::CircuitGenerator;
 
@@ -126,9 +128,15 @@ impl Simulator {
                 .context("Failed to construct circuit generator")?;
 
             // Trigger clients
-            for client in clients.iter_mut() {
-                client.handle_new_epoch(range_start, &range_end, &circgen)?;
-            }
+            clients
+                .par_iter_mut()
+                .progress_count(num_clients as u64)
+                .map(|client| -> anyhow::Result<()> {
+                    client.handle_new_epoch(range_start, &range_end, &circgen)
+                })
+                .collect::<anyhow::Result<()>>()?;
+
+            // test_send::<Client<PrivcountUser>>();
         }
 
         // Wrap up the simulation
@@ -142,3 +150,10 @@ impl Simulator {
         Ok(())
     }
 }
+
+// fn test_send<T>()
+// where
+//     T: Send,
+// {
+//     println!("ok");
+// }

@@ -7,7 +7,7 @@ use markov::Emission;
 
 use std::fs;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use anyhow;
 use chrono::{DateTime, Utc};
@@ -53,7 +53,7 @@ impl PacketStream {
 /// The parsed model parameters (the Markov chain) for the packet model
 #[derive(Clone)]
 pub struct PacketModelParameters {
-    model: Rc<parse::StreamPacketModel>,
+    model: Arc<parse::StreamPacketModel>,
 }
 
 impl PacketModelParameters {
@@ -62,7 +62,7 @@ impl PacketModelParameters {
         let data = fs::read_to_string(path)?;
 
         Ok(PacketModelParameters {
-            model: Rc::new(parse::parse_stream_or_packet_model(data)?),
+            model: Arc::new(parse::parse_stream_or_packet_model(data)?),
         })
     }
 
@@ -111,7 +111,7 @@ impl Iterator for FlowOfStreams {
 /// The parsed model parameters (the Markov chain) for the stream model
 #[derive(Clone)]
 pub struct StreamModelParameters {
-    model: Rc<parse::StreamPacketModel>,
+    model: Arc<parse::StreamPacketModel>,
 }
 
 impl StreamModelParameters {
@@ -120,7 +120,7 @@ impl StreamModelParameters {
         let data = fs::read_to_string(path)?;
 
         Ok(StreamModelParameters {
-            model: Rc::new(parse::parse_stream_or_packet_model(data)?),
+            model: Arc::new(parse::parse_stream_or_packet_model(data)?),
         })
     }
 
