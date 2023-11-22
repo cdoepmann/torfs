@@ -17,11 +17,11 @@ pub(crate) struct Cli {
     pub tor_data: PathBuf,
 
     /// Begin of simulation timespan
-    #[arg(long, value_name = "YYYY-MM[-DD[:HH]]", value_parser = parse_simulation_range_edge)]
+    #[arg(long, value_name = "YYYY-MM[-DD[:HH[:mm]]]", value_parser = parse_simulation_range_edge)]
     pub from: SimulationRangeEdge,
 
     /// End of simulation timespan
-    #[arg(long, value_name = "YYYY-MM[-DD[:HH]]", value_parser = parse_simulation_range_edge)]
+    #[arg(long, value_name = "YYYY-MM[-DD[:HH[:mm]]]", value_parser = parse_simulation_range_edge)]
     pub to: SimulationRangeEdge,
 
     /// Number of clients. If omitted, use values from PrivCount measurements.
@@ -68,6 +68,7 @@ pub(crate) enum SimulationRangeEdge {
     MonthYear(MonthYear),
     DayMonthYear(DayMonthYear),
     HourDayMonthYear(HourDayMonthYear),
+    MinuteHourDayMonthYear(MinuteHourDayMonthYear),
 }
 
 impl SimulationRangeEdge {
@@ -77,6 +78,7 @@ impl SimulationRangeEdge {
             SimulationRangeEdge::MonthYear(x) => x.first_datetime(),
             SimulationRangeEdge::DayMonthYear(x) => x.first_datetime(),
             SimulationRangeEdge::HourDayMonthYear(x) => x.first_datetime(),
+            SimulationRangeEdge::MinuteHourDayMonthYear(x) => x.first_datetime(),
         }
     }
 
@@ -86,6 +88,7 @@ impl SimulationRangeEdge {
             SimulationRangeEdge::MonthYear(x) => x.last_datetime(),
             SimulationRangeEdge::DayMonthYear(x) => x.last_datetime(),
             SimulationRangeEdge::HourDayMonthYear(x) => x.last_datetime(),
+            SimulationRangeEdge::MinuteHourDayMonthYear(x) => x.last_datetime(),
         }
     }
 
@@ -95,6 +98,7 @@ impl SimulationRangeEdge {
             SimulationRangeEdge::MonthYear(x) => x.year,
             SimulationRangeEdge::DayMonthYear(x) => x.year,
             SimulationRangeEdge::HourDayMonthYear(x) => x.year,
+            SimulationRangeEdge::MinuteHourDayMonthYear(x) => x.year,
         }
     }
 
@@ -104,6 +108,7 @@ impl SimulationRangeEdge {
             SimulationRangeEdge::MonthYear(x) => x.month,
             SimulationRangeEdge::DayMonthYear(x) => x.month,
             SimulationRangeEdge::HourDayMonthYear(x) => x.month,
+            SimulationRangeEdge::MinuteHourDayMonthYear(x) => x.month,
         }
     }
 
@@ -113,6 +118,7 @@ impl SimulationRangeEdge {
             SimulationRangeEdge::MonthYear(_) => None,
             SimulationRangeEdge::DayMonthYear(x) => Some(x.day),
             SimulationRangeEdge::HourDayMonthYear(x) => Some(x.day),
+            SimulationRangeEdge::MinuteHourDayMonthYear(x) => Some(x.day),
         }
     }
 }
@@ -193,9 +199,38 @@ impl HourDayMonthYear {
     }
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct MinuteHourDayMonthYear {
+    pub year: u16,
+    pub month: u8,
+    pub day: u8,
+    pub hour: u8,
+    pub minute: u8,
+}
+
+impl MinuteHourDayMonthYear {
+    // Get the first second of this day as a DateTime object
+    pub(crate) fn first_datetime(&self) -> DateTime<Utc> {
+        let d =
+            NaiveDate::from_ymd_opt(self.year as i32, self.month as u32, self.day as u32).unwrap();
+        let t = NaiveTime::from_hms_opt(self.hour as u32, self.minute as u32, 0).unwrap();
+        Utc.from_utc_datetime(&NaiveDateTime::new(d, t))
+    }
+
+    // Get the last second of this day as a DateTime object
+    pub(crate) fn last_datetime(&self) -> DateTime<Utc> {
+        let d =
+            NaiveDate::from_ymd_opt(self.year as i32, self.month as u32, self.day as u32).unwrap();
+        let t = NaiveTime::from_hms_opt(self.hour as u32, self.minute as u32, 59).unwrap();
+        Utc.from_utc_datetime(&NaiveDateTime::new(d, t))
+    }
+}
+
 fn parse_simulation_range_edge(s: &str) -> Result<SimulationRangeEdge, String> {
     // common error
-    let err = || "Invalid month. Required format is YYYY-MM or YYYY-MM-DD".to_string();
+    let err = || {
+        "Invalid time for range. Required format is YYYY-MM or YYYY-MM-DD or YYYY-MM-DD:HH or YYYY-MM-DD:HH:mm".to_string()
+    };
 
     if s.len() == 7 {
         // parse YYYY-MM
@@ -245,6 +280,32 @@ fn parse_simulation_range_edge(s: &str) -> Result<SimulationRangeEdge, String> {
             day,
             hour,
         }));
+    } else if s.len() == 16 {
+        // parse YYYY-MM-DD:HH:mm
+
+        if s.chars().nth(4) != Some('-')
+            || s.chars().nth(7) != Some('-')
+            || s.chars().nth(10) != Some(':')
+            || s.chars().nth(13) != Some(':')
+        {
+            return Err(err());
+        }
+
+        let year = s[..4].parse::<u16>().map_err(|_| err())?;
+        let month = s[5..7].parse::<u8>().map_err(|_| err())?;
+        let day = s[8..10].parse::<u8>().map_err(|_| err())?;
+        let hour = s[11..13].parse::<u8>().map_err(|_| err())?;
+        let minute = s[14..].parse::<u8>().map_err(|_| err())?;
+
+        return Ok(SimulationRangeEdge::MinuteHourDayMonthYear(
+            MinuteHourDayMonthYear {
+                year,
+                month,
+                day,
+                hour,
+                minute,
+            },
+        ));
     }
 
     Err(err())
