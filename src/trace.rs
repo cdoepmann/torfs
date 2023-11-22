@@ -7,7 +7,10 @@ use std::sync::Mutex;
 
 use anyhow;
 use chrono::{DateTime, Utc};
+use indicatif::ProgressIterator;
 use lazy_static::lazy_static;
+#[allow(unused_imports)]
+use log::{debug, info, trace, warn};
 
 use ppcalc_metric;
 
@@ -51,10 +54,15 @@ pub fn write_traces_to_file(
 ) -> anyhow::Result<()> {
     let mut builder = ppcalc_metric::TraceBuilder::new();
 
-    for client_trace in client_traces {
+    info!("Compiling full trace from client traces");
+
+    for mut client_trace in client_traces.into_iter().progress() {
         let client_id = client_trace.client_id;
 
-        for (timestamp, message_id, sender_id) in client_trace.messages {
+        // empty this client trace's messages to save memory
+        let trace_messages = std::mem::take(&mut client_trace.messages);
+
+        for (timestamp, message_id, sender_id) in trace_messages {
             use ppcalc_metric::{DestinationId, MessageId, SourceId};
 
             // TODO: network model
@@ -72,8 +80,10 @@ pub fn write_traces_to_file(
         }
     }
 
+    info!("Fix trace entries");
     builder.fix();
-    let trace = builder.build()?;
+
+    // let trace = builder.build()?;
 
     let fpath = fpath.as_ref();
     let file_writer: Box<dyn Write> = {
@@ -90,8 +100,8 @@ pub fn write_traces_to_file(
             Box::new(file)
         }
     };
-    trace
-        .write_to_writer(file_writer)
+    builder
+        .write_to_writer_unchecked(file_writer)
         .map_err(|e| anyhow::anyhow!(e))?;
 
     Ok(())
