@@ -59,6 +59,7 @@ pub fn write_traces_to_file(
     // packet reordering or overlapping streams)
 
     let total_messages: usize = client_traces.iter().map(|x| x.messages.len()).sum();
+    info!("Saving {} messages...", total_messages);
 
     use itertools::Itertools;
     let merged_iterator = client_traces
@@ -85,16 +86,16 @@ pub fn write_traces_to_file(
             .to_string_lossy()
             .ends_with(".zst")
         {
-            Box::new(zstd::Encoder::new(file, 16)?.auto_finish())
+            Box::new(zstd::Encoder::new(std::io::BufWriter::new(file), 5)?.auto_finish())
         } else {
-            Box::new(file)
+            Box::new(std::io::BufWriter::new(file))
         }
     };
 
     let print_every = total_messages / 1000;
 
     use ppcalc_metric::{DestinationId, MessageId, SourceId};
-    ppcalc_metric::write_trace_to_writer_from_iter(
+    ppcalc_metric::write_postcard_trace_to_writer_from_iter(
         merged_iterator
             .enumerate()
             .map(|(message_id, ((timestamp, _, sender_id), client_id))| {
