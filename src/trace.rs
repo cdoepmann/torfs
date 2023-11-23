@@ -52,8 +52,6 @@ pub fn write_traces_to_file(
     client_traces: Vec<ClientTrace>,
     fpath: impl AsRef<Path>,
 ) -> anyhow::Result<()> {
-    let mut builder = ppcalc_metric::TraceBuilder::new();
-
     // Iterate over the client traces' messages in a sorted order.
     // (Note that the client traces themselves are sorted as there is no
     // packet reordering or overlapping streams)
@@ -64,8 +62,8 @@ pub fn write_traces_to_file(
     use itertools::Itertools;
     let merged_iterator = client_traces
         .into_iter()
-        .map(|client_trace| {
-            // client_trace.messages.sort_unstable();
+        .map(|mut client_trace| {
+            client_trace.messages.sort_unstable_by_key(|(x, _, _)| *x); // just to be safe
             client_trace
                 .messages
                 .into_iter()
