@@ -81,6 +81,7 @@ impl MarkovChain {
         let state = self.states.get(&self.current_state).unwrap();
         let next_state = self.states.get(&state.transition()).unwrap();
         let (emission, delay) = next_state.emission();
+        assert!(delay >= Duration::microseconds(0));
         let time = self.current_time;
 
         if let Emission::StopGenerating = emission {
