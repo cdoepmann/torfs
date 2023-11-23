@@ -38,15 +38,21 @@ pub(crate) struct DummyUser {
     current_time: DateTime<Utc>,
     // packet model to generate the response timestamps
     packet_model: PacketModelParameters,
+    not_after: DateTime<Utc>,
 }
 
 impl DummyUser {
     /// Create a new dummy user at a given point in time
     #[allow(unused)]
-    pub fn new(start_time: DateTime<Utc>, packet_model: PacketModelParameters) -> DummyUser {
+    pub fn new(
+        start_time: DateTime<Utc>,
+        packet_model: PacketModelParameters,
+        not_after: DateTime<Utc>,
+    ) -> DummyUser {
         DummyUser {
             current_time: start_time,
             packet_model,
+            not_after,
         }
     }
 }
@@ -67,7 +73,7 @@ impl Iterator for DummyUser {
         let packet_timestamps = self
             .packet_model
             .make_packetstream(request_time)
-            .generate_timestamps()
+            .generate_timestamps(self.not_after)
             .unwrap();
 
         // wait with further requests until this request is over
@@ -99,6 +105,8 @@ pub(crate) struct PrivcountUser {
     stream_model_parameters: StreamModelParameters,
     // packet model to generate the response timestamps
     packet_model: PacketModelParameters,
+    /// Do not generate packets after this time
+    not_after: DateTime<Utc>,
 }
 
 impl PrivcountUser {
@@ -109,12 +117,14 @@ impl PrivcountUser {
         flows_every_10min: f64,
         stream_model: StreamModelParameters,
         packet_model: PacketModelParameters,
+        not_after: DateTime<Utc>,
     ) -> PrivcountUser {
         PrivcountUser {
             flow_model: ExponentialFlowModel::new(start_time, flows_every_10min),
             current_flow: None,
             stream_model_parameters: stream_model,
             packet_model,
+            not_after,
         }
     }
 }
@@ -139,7 +149,7 @@ impl Iterator for PrivcountUser {
                             let packet_timestamps = self
                                 .packet_model
                                 .make_packetstream(request_time)
-                                .generate_timestamps()
+                                .generate_timestamps(self.not_after)
                                 .unwrap();
 
                             // wait with further requests until this request is over

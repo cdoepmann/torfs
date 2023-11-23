@@ -20,7 +20,10 @@ pub struct PacketStream {
 }
 
 impl PacketStream {
-    pub fn generate_timestamps(&mut self) -> anyhow::Result<Vec<DateTime<Utc>>> {
+    pub fn generate_timestamps(
+        &mut self,
+        not_after: DateTime<Utc>,
+    ) -> anyhow::Result<Vec<DateTime<Utc>>> {
         // TODO maybe iterator
 
         let mut res = Vec::new();
@@ -28,6 +31,10 @@ impl PacketStream {
         loop {
             let (time, emission) = self.chain.get_next();
             // println!("{}:{}", time, emission);
+
+            if time > not_after {
+                break;
+            }
 
             match emission {
                 Emission::GeneratePacketFromClientToServer => {

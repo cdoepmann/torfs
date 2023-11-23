@@ -73,6 +73,7 @@ impl Simulator {
                         num_circuits_10min as f64 / num_clients as f64,
                         stream_model.clone(),
                         packet_model.clone(),
+                        end_time,
                     ),
                 )
             })
