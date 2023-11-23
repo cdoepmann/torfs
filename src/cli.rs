@@ -28,6 +28,15 @@ pub(crate) struct Cli {
     #[arg(long)]
     pub clients: Option<u64>,
 
+    /// Scale the load by number of users, relative to the PrivCount measurements
+    #[arg(
+        long,
+        value_name = "SCALE",
+        default_value_t = 1.0,
+        conflicts_with = "clients"
+    )]
+    pub load_scale: f64,
+
     /// Number of adversarial guards
     #[arg(long, requires = "adv_guards_bw")]
     pub adv_guards_num: Option<u64>,

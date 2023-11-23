@@ -55,9 +55,10 @@ impl Simulator {
         info!("Parsing packet model");
         let packet_model = PacketModelParameters::new(&self.cli.packet_model)?;
 
-        let num_clients = self.cli.clients.unwrap_or_else(|| get_privcount_users());
+        let num_clients = (self.cli.clients.unwrap_or_else(|| get_privcount_users()) as f64
+            * self.cli.load_scale) as u64;
         // the total number of circuits/flows that are created every 10 minutes
-        let num_circuits_10min = get_privcount_circuits_10min();
+        let num_circuits_10min = get_privcount_circuits_10min() * self.cli.load_scale;
 
         info!(
             "Creating {} clients that build {:.1} circuits every 10 minutes in total",
