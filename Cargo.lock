@@ -1353,6 +1353,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "time 0.3.30",
+ "zstd",
 ]
 
 [[package]]

@@ -1,13 +1,11 @@
 //! Generation of network traces for use in ppcalc
 
-use std::fs;
-use std::io::Write;
 use std::path::Path;
 use std::sync::Mutex;
 
 use anyhow;
 use chrono::{DateTime, Utc};
-use indicatif::ProgressIterator;
+// use indicatif::ProgressIterator;
 use lazy_static::lazy_static;
 #[allow(unused_imports)]
 use log::{debug, info, trace, warn};
@@ -74,48 +72,34 @@ pub fn write_traces_to_file(
 
     info!("Writing sorted trace to file");
 
-    let fpath = fpath.as_ref();
-    let file_writer: Box<dyn Write> = {
-        let file = fs::File::create(fpath)?;
-
-        if fpath
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .ends_with(".zst")
-        {
-            Box::new(zstd::Encoder::new(std::io::BufWriter::new(file), 5)?.auto_finish())
-        } else {
-            Box::new(std::io::BufWriter::new(file))
-        }
-    };
-
     let print_every = total_messages / 1000;
 
     use ppcalc_metric::{DestinationId, MessageId, SourceId};
-    ppcalc_metric::write_postcard_trace_to_writer_from_iter(
-        merged_iterator
-            .enumerate()
-            .map(|(message_id, ((timestamp, _, sender_id), client_id))| {
-                if message_id % print_every == 0 {
-                    info!(
-                        "completed {:.1} % ",
-                        (message_id as f64 / print_every as f64) * 0.1
-                    )
-                }
+    ppcalc_metric::TraceWriter::new()
+        .to_path(fpath)
+        // .postcard(true)
+        .write_entries(
+            merged_iterator.enumerate().map(
+                |(message_id, ((timestamp, _, sender_id), client_id))| {
+                    if message_id % print_every == 0 {
+                        info!(
+                            "completed {:.1} % ",
+                            (message_id as f64 / print_every as f64) * 0.1
+                        )
+                    }
 
-                let received = timestamp + chrono::Duration::milliseconds(210);
-                ppcalc_metric::TraceEntry {
-                    m_id: MessageId::new(message_id as u64),
-                    source_id: SourceId::new(sender_id),
-                    source_timestamp: convert_time(timestamp),
-                    destination_id: DestinationId::new(client_id),
-                    destination_timestamp: convert_time(received),
-                }
-            }), // .progress_count(total_messages as u64)
-        file_writer,
-    )
-    .map_err(|e| anyhow::anyhow!(e))?;
+                    let received = timestamp + chrono::Duration::milliseconds(210);
+                    ppcalc_metric::TraceEntry {
+                        m_id: MessageId::new(message_id as u64),
+                        source_id: SourceId::new(sender_id),
+                        source_timestamp: convert_time(timestamp),
+                        destination_id: DestinationId::new(client_id),
+                        destination_timestamp: convert_time(received),
+                    }
+                },
+            ), // .progress_count(total_messages as u64)
+        )
+        .map_err(|e| anyhow::anyhow!(e))?;
 
     // info!("Compiling full trace from client traces");
 
