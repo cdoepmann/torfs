@@ -174,7 +174,10 @@ impl Iterator for PrivcountUser {
                 None => {
                     // there is no active flow, we have to start one
                     let flow_time = self.flow_model.next().unwrap(); // this is an infinite stream, so unwrap is fine
-                    self.current_flow = Some(self.stream_model_parameters.make_flow(flow_time));
+                    self.current_flow = Some(
+                        self.stream_model_parameters
+                            .make_flow(flow_time, self.not_after),
+                    );
                 }
             }
         }

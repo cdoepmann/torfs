@@ -72,7 +72,7 @@ impl Display for MarkovChain {
  * 5. update the state
  */
 impl MarkovChain {
-    pub fn get_next(self: &mut Self) -> (DateTime<Utc>, Emission) {
+    pub fn get_next(&mut self, not_after: DateTime<Utc>) -> (DateTime<Utc>, Emission) {
         /* No more hops after the generations has stopped */
         if self.stopped {
             return (self.current_time, Emission::StopGenerating);
@@ -87,7 +87,14 @@ impl MarkovChain {
         if let Emission::StopGenerating = emission {
             self.stopped = true;
         }
-        self.current_time = time + delay;
+
+        // make sure the current time does not leave the valid time range and
+        // does not overflow
+        if delay >= (not_after - self.current_time) {
+            self.current_time = not_after;
+            self.stopped = true;
+        }
+
         self.current_state = next_state.id.clone();
         return (time, emission);
     }

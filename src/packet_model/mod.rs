@@ -29,7 +29,7 @@ impl PacketStream {
         let mut res = Vec::new();
 
         loop {
-            let (time, emission) = self.chain.get_next();
+            let (time, emission) = self.chain.get_next(not_after);
             // println!("{}:{}", time, emission);
 
             if time > not_after {
@@ -83,6 +83,7 @@ impl PacketModelParameters {
 /// A flow that generates new streams
 pub struct FlowOfStreams {
     chain: markov::MarkovChain,
+    not_after: DateTime<Utc>,
 }
 
 impl FlowOfStreams {
@@ -96,7 +97,7 @@ impl Iterator for FlowOfStreams {
     type Item = DateTime<Utc>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (time, emission) = self.chain.get_next();
+        let (time, emission) = self.chain.get_next(self.not_after);
 
         match emission {
             Emission::GeneratePacketFromClientToServer => {
@@ -131,9 +132,10 @@ impl StreamModelParameters {
         })
     }
 
-    pub fn make_flow(&self, time: DateTime<Utc>) -> FlowOfStreams {
+    pub fn make_flow(&self, time: DateTime<Utc>, not_after: DateTime<Utc>) -> FlowOfStreams {
         FlowOfStreams {
             chain: markov::MarkovChain::new((*self.model).clone(), time),
+            not_after,
         }
     }
 }
