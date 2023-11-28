@@ -1,16 +1,23 @@
 //! Generation of network traces for use in ppcalc
 
+use num_cpus;
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::Path;
 use std::sync::Mutex;
+use std::thread::JoinHandle;
+use zstd;
 
 use anyhow;
 use chrono::{DateTime, Utc};
+use crossbeam::channel::{Receiver, Sender};
 // use indicatif::ProgressIterator;
 use lazy_static::lazy_static;
 #[allow(unused_imports)]
 use log::{debug, info, trace, warn};
 
 use ppcalc_metric;
+use ppcalc_metric::{DestinationId, MessageId, SourceId, TraceEntry};
 
 lazy_static! {
     static ref NEXT_SENDER: GlobalCounter = GlobalCounter::new(0);
@@ -46,112 +53,28 @@ impl ClientTrace {
     }
 }
 
-pub fn write_traces_to_file(
-    client_traces: Vec<ClientTrace>,
-    fpath: impl AsRef<Path>,
-) -> anyhow::Result<()> {
-    // Iterate over the client traces' messages in a sorted order.
-    // (Note that the client traces themselves are sorted as there is no
-    // packet reordering or overlapping streams)
+pub fn make_trace_entries(
+    timestamps: Vec<DateTime<Utc>>,
+    client_id: u64,
+) -> impl Iterator<Item = TraceEntry> {
+    let sender = NEXT_SENDER.get_next();
+    let message_ids = NEXT_MESSAGE.get_next_n(timestamps.len() as u64);
 
-    let total_messages: usize = client_traces.iter().map(|x| x.messages.len()).sum();
-    info!("Saving {} messages...", total_messages);
-
-    use itertools::Itertools;
-    let merged_iterator = client_traces
+    timestamps
         .into_iter()
-        .map(|mut client_trace| {
-            client_trace.messages.sort_unstable_by_key(|(x, _, _)| *x); // just to be safe
-            client_trace
-                .messages
-                .into_iter()
-                // remember the client ID
-                .zip(std::iter::repeat(client_trace.client_id))
+        .zip(message_ids.into_iter())
+        .map(move |(timestamp, message_id)| {
+            let source_timestamp = convert_time(timestamp);
+            let destination_timestamp = source_timestamp + time::Duration::milliseconds(210);
+
+            TraceEntry {
+                m_id: MessageId::new(message_id),
+                source_id: SourceId::new(sender),
+                source_timestamp,
+                destination_id: DestinationId::new(client_id),
+                destination_timestamp,
+            }
         })
-        .kmerge_by(|((x, _, _), _), ((y, _, _), _)| x < y);
-
-    info!("Writing sorted trace to file");
-
-    let print_every = total_messages / 1000;
-
-    use ppcalc_metric::{DestinationId, MessageId, SourceId};
-    ppcalc_metric::TraceWriter::new()
-        .to_path(fpath)
-        // .postcard(true)
-        .write_entries(
-            merged_iterator.enumerate().map(
-                |(message_id, ((timestamp, _, sender_id), client_id))| {
-                    if message_id % print_every == 0 {
-                        info!(
-                            "completed {:.1} % ",
-                            (message_id as f64 / print_every as f64) * 0.1
-                        )
-                    }
-
-                    let received = timestamp + chrono::Duration::milliseconds(210);
-                    ppcalc_metric::TraceEntry {
-                        m_id: MessageId::new(message_id as u64),
-                        source_id: SourceId::new(sender_id),
-                        source_timestamp: convert_time(timestamp),
-                        destination_id: DestinationId::new(client_id),
-                        destination_timestamp: convert_time(received),
-                    }
-                },
-            ), // .progress_count(total_messages as u64)
-        )
-        .map_err(|e| anyhow::anyhow!(e))?;
-
-    // info!("Compiling full trace from client traces");
-
-    // for mut client_trace in client_traces.into_iter().progress() {
-    //     let client_id = client_trace.client_id;
-
-    //     // empty this client trace's messages to save memory
-    //     let trace_messages = std::mem::take(&mut client_trace.messages);
-
-    //     for (timestamp, message_id, sender_id) in trace_messages {
-    //         use ppcalc_metric::{DestinationId, MessageId, SourceId};
-
-    //         // TODO: network model
-    //         let received = timestamp + chrono::Duration::milliseconds(210);
-
-    //         let entry = ppcalc_metric::TraceEntry {
-    //             m_id: MessageId::new(message_id),
-    //             source_id: SourceId::new(sender_id),
-    //             source_timestamp: convert_time(timestamp),
-    //             destination_id: DestinationId::new(client_id),
-    //             destination_timestamp: convert_time(received),
-    //         };
-
-    //         builder.add_entry(entry);
-    //     }
-    // }
-
-    // info!("Fix trace entries");
-    // builder.fix();
-
-    // // let trace = builder.build()?;
-
-    // let fpath = fpath.as_ref();
-    // let file_writer: Box<dyn Write> = {
-    //     let file = fs::File::create(fpath)?;
-
-    //     if fpath
-    //         .file_name()
-    //         .unwrap()
-    //         .to_string_lossy()
-    //         .ends_with(".zst")
-    //     {
-    //         Box::new(zstd::Encoder::new(file, 16)?.auto_finish())
-    //     } else {
-    //         Box::new(file)
-    //     }
-    // };
-    // builder
-    //     .write_to_writer_unchecked(file_writer)
-    //     .map_err(|e| anyhow::anyhow!(e))?;
-
-    Ok(())
 }
 
 fn convert_time(timestamp: DateTime<Utc>) -> time::PrimitiveDateTime {
@@ -197,5 +120,147 @@ impl GlobalCounter {
         };
 
         return (first_value..(first_value + n)).collect();
+    }
+}
+
+pub struct TraceHandle {
+    sender: Sender<Option<Vec<u8>>>,
+    join_handle: JoinHandle<anyhow::Result<()>>,
+}
+
+impl TraceHandle {
+    pub fn new(path: impl AsRef<Path>) -> anyhow::Result<TraceHandle> {
+        let (sender, receiver) = crossbeam::channel::bounded(1024);
+
+        let worker = TraceWorker::new(path, receiver)?;
+        let join_handle = std::thread::spawn(move || worker.run());
+
+        Ok(TraceHandle {
+            sender,
+            join_handle,
+        })
+    }
+
+    pub fn get_writer(&self) -> MemoryCsvWriter {
+        MemoryCsvWriter::new(self.sender.clone())
+    }
+
+    pub fn stop_and_join(self) -> anyhow::Result<()> {
+        self.sender.send(None)?;
+        self.join_handle.join().unwrap()?;
+        Ok(())
+    }
+}
+
+struct TraceWorker {
+    receiver: Receiver<Option<Vec<u8>>>,
+    file_writer: Box<dyn std::io::Write + Send>,
+}
+
+impl TraceWorker {
+    fn new(
+        path: impl AsRef<Path>,
+        receiver: Receiver<Option<Vec<u8>>>,
+    ) -> anyhow::Result<TraceWorker> {
+        let file_writer: Box<dyn Write + Send> = {
+            let path = path.as_ref();
+
+            let file = File::create(path)?;
+
+            if path
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .ends_with(".zst")
+            {
+                let nproc = num_cpus::get_physical();
+                Box::new({
+                    let mut encoder = zstd::Encoder::new(file, 5)?;
+                    encoder.multithread(nproc as u32)?;
+                    encoder.auto_finish()
+                })
+            } else {
+                Box::new(file)
+            }
+        };
+
+        Ok(TraceWorker {
+            receiver,
+            file_writer,
+        })
+    }
+
+    fn run(mut self) -> anyhow::Result<()> {
+        self.file_writer
+            .write_all(b"m_id,source_id,source_timestamp,destination_id,destination_timestamp\n")?;
+
+        while let Some(data) = self.receiver.recv()? {
+            assert!(&data.iter().filter(|x| x == &&b',').count() % 4 == 0);
+
+            // let s = String::from_utf8_lossy(&data[..]);
+            // info!("Got: \"{}\"", s);
+
+            self.file_writer.write_all(&data[..])?;
+        }
+
+        Ok(())
+    }
+}
+
+pub struct MemoryCsvWriter {
+    sender: Sender<Option<Vec<u8>>>,
+    csv_writer: csv::Writer<Vec<u8>>,
+}
+
+impl MemoryCsvWriter {
+    pub fn new(sender: Sender<Option<Vec<u8>>>) -> MemoryCsvWriter {
+        MemoryCsvWriter {
+            sender,
+            csv_writer: csv::WriterBuilder::new()
+                .has_headers(false)
+                .from_writer(Vec::with_capacity(65536)),
+        }
+    }
+
+    pub fn write_entries(
+        &mut self,
+        entries: impl Iterator<Item = TraceEntry>,
+    ) -> anyhow::Result<()> {
+        for entry in entries {
+            self.csv_writer.serialize(entry)?;
+        }
+
+        if self.csv_writer.get_ref().len() > 49152 {
+            self.flush()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn flush(&mut self) -> anyhow::Result<()> {
+        let new_writer = csv::WriterBuilder::new()
+            .has_headers(false)
+            .from_writer(Vec::with_capacity(65536));
+        let old_writer = std::mem::replace(&mut self.csv_writer, new_writer);
+        self.sender
+            .send(Some(old_writer.into_inner()?))
+            .map_err(|e| anyhow::anyhow!(e))?;
+
+        Ok(())
+    }
+}
+
+// impl Clone for MemoryCsvWriter {
+//     fn clone(&self) -> Self {
+//         Self {
+//             sender: self.sender.clone(),
+//             csv_writer: csv::Writer::from_writer(Vec::with_capacity(65536)),
+//         }
+//     }
+// }
+
+impl Drop for MemoryCsvWriter {
+    fn drop(&mut self) {
+        self.flush().unwrap();
     }
 }

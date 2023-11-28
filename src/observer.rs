@@ -13,7 +13,7 @@ use tordoc::Fingerprint;
 
 use crate::adversaries::Adversary;
 use crate::client;
-use crate::trace::ClientTrace;
+use crate::trace::{make_trace_entries, ClientTrace, MemoryCsvWriter};
 use crate::user::Request;
 
 #[allow(unused_imports)]
@@ -38,8 +38,6 @@ impl SimulationObserver {
         let merged_iterator = client_observers
             .into_iter()
             .map(|mut co| {
-                client_traces.push(co.trace);
-
                 co.events_circuit_used.sort_unstable();
                 co.events_circuit_used.into_iter()
             })
@@ -75,10 +73,6 @@ impl SimulationObserver {
                 format_with_adv(&circuit_event.circuit.exit),
             );
         }
-    }
-
-    pub(crate) fn write_trace(self, fpath: impl AsRef<Path>) -> anyhow::Result<()> {
-        crate::trace::write_traces_to_file(self.client_traces, fpath)
     }
 }
 
@@ -221,7 +215,6 @@ pub(crate) struct ClientObserver {
     events_new_circuit: Vec<NewCircuitEvent>,
     events_circuit_used: Vec<CircuitUsedEvent>,
     events_circuit_closed: Vec<CircuitClosedEvent>,
-    trace: ClientTrace,
 }
 
 impl ClientObserver {
@@ -232,7 +225,6 @@ impl ClientObserver {
             events_new_circuit: Vec::new(),
             events_circuit_used: Vec::new(),
             events_circuit_closed: Vec::new(),
-            trace: ClientTrace::new(client_id),
         }
     }
 
@@ -254,12 +246,12 @@ impl ClientObserver {
             reason,
         );
 
-        self.events_new_circuit.push(NewCircuitEvent {
-            time,
-            client_id: self.client_id,
-            circuit: circuit.clone(),
-            port,
-        });
+        // self.events_new_circuit.push(NewCircuitEvent {
+        //     time,
+        //     client_id: self.client_id,
+        //     circuit: circuit.clone(),
+        //     port,
+        // });
     }
 
     /// Notify the observer that a circuit was used to carry a new stream
@@ -268,7 +260,8 @@ impl ClientObserver {
         circuit: &client::ShallowCircuit,
         request: &Request,
         timestamps: Vec<DateTime<Utc>>,
-    ) {
+        csv_writer: &mut MemoryCsvWriter,
+    ) -> anyhow::Result<()> {
         trace!(
             "[{}] Client {} uses the following circuit for a stream request: {} {} {}",
             &request.time,
@@ -278,14 +271,16 @@ impl ClientObserver {
             circuit.exit,
         );
 
-        self.events_circuit_used.push(CircuitUsedEvent {
-            time: request.time.clone(),
-            client_id: self.client_id,
-            circuit: circuit.into(),
-            request: request.clone(),
-        });
+        // self.events_circuit_used.push(CircuitUsedEvent {
+        //     time: request.time.clone(),
+        //     client_id: self.client_id,
+        //     circuit: circuit.into(),
+        //     request: request.clone(),
+        // });
 
-        self.trace.push_stream(timestamps);
+        csv_writer.write_entries(make_trace_entries(timestamps, self.client_id))?;
+
+        Ok(())
     }
 
     /// Notify the observer that a circuit was closed
@@ -305,12 +300,12 @@ impl ClientObserver {
             circuit.exit,
         );
 
-        self.events_circuit_closed.push(CircuitClosedEvent {
-            time: time.clone(),
-            client_id: self.client_id,
-            circuit: circuit.into(),
-            reason,
-        });
+        // self.events_circuit_closed.push(CircuitClosedEvent {
+        //     time: time.clone(),
+        //     client_id: self.client_id,
+        //     circuit: circuit.into(),
+        //     reason,
+        // });
     }
 
     pub(crate) fn notify_new_need(&mut self, time: &DateTime<Utc>, need: String) {

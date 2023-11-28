@@ -15,6 +15,7 @@ use crate::client::Client;
 use crate::input::TorArchive;
 use crate::observer::SimulationObserver;
 use crate::packet_model::{PacketModelParameters, StreamModelParameters};
+use crate::trace::TraceHandle;
 use crate::user::{get_privcount_circuits_10min, get_privcount_users, PrivcountUser};
 
 pub(crate) struct Simulator {
@@ -54,6 +55,8 @@ impl Simulator {
 
         info!("Parsing packet model");
         let packet_model = PacketModelParameters::new(&self.cli.packet_model)?;
+
+        let trace_handle = TraceHandle::new(self.cli.output_trace)?;
 
         let num_clients = (self.cli.clients.unwrap_or_else(|| get_privcount_users()) as f64
             * self.cli.load_scale) as u64;
@@ -129,14 +132,49 @@ impl Simulator {
                 .map_err(|e| anyhow::anyhow!(e))
                 .context("Failed to construct circuit generator")?;
 
+            // Progress printer. Takes progress info via a channel from the processing
+            // threads and prints status info to stdout. This thread finishes as soon
+            // a false value is sent to the channel, or the channel is closed.
+            let (progress_thread_handle, progress_s) = {
+                let total = clients.len();
+                let print_every = std::cmp::max(total / 1000, 1);
+                let (progress_s, progress_r) = crossbeam::channel::unbounded::<bool>();
+
+                (
+                    std::thread::spawn(move || {
+                        let mut seen: usize = 0;
+                        while let Ok(value) = progress_r.recv() {
+                            if value == false {
+                                break;
+                            }
+                            seen += 1;
+                            if seen % print_every == 0 && seen > 0 {
+                                info!("completed {:.1} %", (seen as f64 / total as f64) * 100.0);
+                            }
+                        }
+                    }),
+                    progress_s,
+                )
+            };
+
             // Trigger clients
             clients
                 .par_iter_mut()
-                .progress_count(num_clients as u64)
-                .map(|client| -> anyhow::Result<()> {
-                    client.handle_new_epoch(range_start, &range_end, &circgen)
-                })
+                // .progress_count(num_clients as u64)
+                .map_init(
+                    || trace_handle.get_writer(),
+                    |csv_writer, client| -> anyhow::Result<()> {
+                        client.handle_new_epoch(range_start, &range_end, &circgen, csv_writer)?;
+
+                        csv_writer.flush()?;
+                        progress_s.send(true).unwrap();
+                        Ok(())
+                    },
+                )
                 .collect::<anyhow::Result<()>>()?;
+
+            progress_s.send(false).unwrap();
+            progress_thread_handle.join().unwrap();
 
             // test_send::<Client<PrivcountUser>>();
         }
@@ -147,7 +185,8 @@ impl Simulator {
             adversary,
         );
         // observer.print();
-        observer.write_trace(self.cli.output_trace)?;
+
+        trace_handle.stop_and_join()?;
 
         Ok(())
     }
