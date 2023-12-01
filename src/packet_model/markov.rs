@@ -93,6 +93,8 @@ impl MarkovChain {
         if delay >= (not_after - self.current_time) {
             self.current_time = not_after;
             self.stopped = true;
+        } else {
+            self.current_time = time + delay;
         }
 
         self.current_state = next_state.id.clone();
