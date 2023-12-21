@@ -13,7 +13,7 @@ use crate::adversaries::Adversary;
 use crate::cli::Cli;
 use crate::client::Client;
 use crate::input::TorArchive;
-use crate::observer::SimulationObserver;
+use crate::observer::{ExitFingerprintSerializer, SimulationObserver};
 use crate::packet_model::{PacketModelParameters, StreamModelParameters};
 use crate::trace::TraceHandle;
 use crate::user::{get_privcount_circuits_10min, get_privcount_users, PrivcountUser};
@@ -82,6 +82,10 @@ impl Simulator {
             })
             .collect();
 
+        // Collect, over time, a mapping from exit fingerprints to unique u64 values
+        // so we can output these instead of the full fingerprints to traces.
+        let mut exit_ids = ExitFingerprintSerializer::new();
+
         // Iterate over the consensus handles for the simulation duration.
         // We make this peekable so we can see when the next consensus period starts.
         // Each item of this iterator is of type anyhow::Result<...>, so we keep
@@ -131,6 +135,7 @@ impl Simulator {
             let circgen = CircuitGenerator::new(&consensus, descriptors, vec![443, 80, 22])
                 .map_err(|e| anyhow::anyhow!(e))
                 .context("Failed to construct circuit generator")?;
+            exit_ids.add_consensus(&consensus);
 
             // Progress printer. Takes progress info via a channel from the processing
             // threads and prints status info to stdout. This thread finishes as soon
@@ -164,7 +169,13 @@ impl Simulator {
                 .map_init(
                     || trace_handle.get_writer(),
                     |csv_writer, client| -> anyhow::Result<()> {
-                        client.handle_new_epoch(range_start, &range_end, &circgen, csv_writer)?;
+                        client.handle_new_epoch(
+                            range_start,
+                            &range_end,
+                            &circgen,
+                            csv_writer,
+                            &exit_ids,
+                        )?;
 
                         csv_writer.flush()?;
                         progress_s.send(true).unwrap();

@@ -8,8 +8,9 @@ use std::path::Path;
 
 use anyhow;
 use chrono::{DateTime, Utc};
+use fxhash::FxHashMap;
 use tor_circuit_generator::TorCircuit;
-use tordoc::Fingerprint;
+use tordoc::{consensus::Flag, Consensus, Fingerprint};
 
 use crate::adversaries::Adversary;
 use crate::client;
@@ -261,6 +262,7 @@ impl ClientObserver {
         request: &Request,
         timestamps: Vec<DateTime<Utc>>,
         csv_writer: &mut MemoryCsvWriter,
+        exit_ids: &ExitFingerprintSerializer,
     ) -> anyhow::Result<()> {
         trace!(
             "[{}] Client {} uses the following circuit for a stream request: {} {} {}",
@@ -277,8 +279,15 @@ impl ClientObserver {
         //     circuit: circuit.into(),
         //     request: request.clone(),
         // });
+        let exit_id = exit_ids.get(&circuit.exit).expect(
+            format!(
+                "Observer got an exit fingerprint that has no ID assigned: {}",
+                &circuit.exit
+            )
+            .as_str(),
+        );
 
-        csv_writer.write_entries(make_trace_entries(timestamps, self.client_id))?;
+        csv_writer.write_entries(make_trace_entries(timestamps, exit_id))?;
 
         Ok(())
     }
@@ -332,5 +341,41 @@ impl ClientObserver {
             self.client_id,
             fp,
         );
+    }
+}
+
+/// A helper struct to assemble a mapping from exit relay fingerprints to plain
+/// (but still unique) u64 values. This is needed for generating the traces which
+/// need plain numeric values instead of fingerprints.
+pub(crate) struct ExitFingerprintSerializer {
+    assigned_ids: FxHashMap<Fingerprint, u64>,
+    next_id: u64,
+}
+
+impl ExitFingerprintSerializer {
+    pub(crate) fn new() -> ExitFingerprintSerializer {
+        ExitFingerprintSerializer {
+            assigned_ids: FxHashMap::default(),
+            next_id: 0,
+        }
+    }
+
+    pub(crate) fn add_consensus(&mut self, consensus: &Consensus) {
+        for relay in consensus.relays.iter() {
+            if let (Some(fingerprint), Some(flags)) =
+                (relay.fingerprint.as_ref(), relay.flags.as_ref())
+            {
+                if flags.contains(&Flag::Exit) {
+                    if self.get(fingerprint).is_none() {
+                        self.assigned_ids.insert(fingerprint.clone(), self.next_id);
+                        self.next_id += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn get(&self, fingerprint: &Fingerprint) -> Option<u64> {
+        self.assigned_ids.get(fingerprint).copied()
     }
 }

@@ -20,7 +20,7 @@ use ppcalc_metric;
 use ppcalc_metric::{DestinationId, MessageId, SourceId, TraceEntry};
 
 lazy_static! {
-    static ref NEXT_SENDER: GlobalCounter = GlobalCounter::new(0);
+    static ref NEXT_RECEIVER: GlobalCounter = GlobalCounter::new(0);
     static ref NEXT_MESSAGE: GlobalCounter = GlobalCounter::new(0);
 }
 
@@ -44,7 +44,7 @@ impl ClientTrace {
             return;
         }
 
-        let sender = NEXT_SENDER.get_next();
+        let sender = NEXT_RECEIVER.get_next();
         let message_ids = NEXT_MESSAGE.get_next_n(timestamps.len() as u64);
 
         for (timestamp, message_id) in timestamps.into_iter().zip(message_ids.into_iter()) {
@@ -55,9 +55,9 @@ impl ClientTrace {
 
 pub fn make_trace_entries(
     timestamps: Vec<DateTime<Utc>>,
-    client_id: u64,
+    exit_id: u64,
 ) -> impl Iterator<Item = TraceEntry> {
-    let sender = NEXT_SENDER.get_next();
+    let receiver = NEXT_RECEIVER.get_next();
     let message_ids = NEXT_MESSAGE.get_next_n(timestamps.len() as u64);
 
     timestamps
@@ -65,13 +65,13 @@ pub fn make_trace_entries(
         .zip(message_ids.into_iter())
         .map(move |(timestamp, message_id)| {
             let source_timestamp = convert_time(timestamp);
-            let destination_timestamp = source_timestamp + time::Duration::milliseconds(210);
+            let destination_timestamp = source_timestamp + time::Duration::milliseconds(210); // TODO
 
             TraceEntry {
                 m_id: MessageId::new(message_id),
-                source_id: SourceId::new(sender),
+                source_id: SourceId::new(exit_id),
                 source_timestamp,
-                destination_id: DestinationId::new(client_id),
+                destination_id: DestinationId::new(receiver),
                 destination_timestamp,
             }
         })

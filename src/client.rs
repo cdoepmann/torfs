@@ -4,7 +4,7 @@ use std::iter::Peekable;
 
 use crate::guard::GuardHandling;
 use crate::needs::{NeedHandle, NeedsContainer};
-use crate::observer::{CircuitCloseReason, ClientObserver};
+use crate::observer::{CircuitCloseReason, ClientObserver, ExitFingerprintSerializer};
 use crate::trace::MemoryCsvWriter;
 use crate::user::{Request, UserModel};
 use crate::utils::*;
@@ -59,6 +59,7 @@ impl<U: UserModel> Client<U> {
         epoch_end: &DateTime<Utc>,
         circuit_generator: &CircuitGenerator,
         csv_writer: &mut MemoryCsvWriter,
+        exit_ids: &ExitFingerprintSerializer,
     ) -> anyhow::Result<()> {
         // TODO: period_client_update
         // TODO: update guard set
@@ -100,6 +101,7 @@ impl<U: UserModel> Client<U> {
                 circuit_generator,
                 &mut self.observer,
                 csv_writer,
+                exit_ids,
             )?;
         }
 
@@ -327,6 +329,7 @@ impl CircuitManager {
         circgen: &CircuitGenerator,
         observer: &mut ClientObserver,
         csv_writer: &mut MemoryCsvWriter,
+        exit_ids: &ExitFingerprintSerializer,
     ) -> anyhow::Result<()> {
         // Unfortunately, we have to split the following two criteria into
         // separate functions to work around one of the current
@@ -388,7 +391,13 @@ impl CircuitManager {
         // We "move" the packet trace out of the request object as it is not needed
         // again later on and we want to avoid cloning it.
         let packet_timestamps = std::mem::take(&mut request.packet_timestamps);
-        observer.notify_circuit_used(chosen_circ, &request, packet_timestamps, csv_writer)?;
+        observer.notify_circuit_used(
+            chosen_circ,
+            &request,
+            packet_timestamps,
+            csv_writer,
+            exit_ids,
+        )?;
 
         let guard_fingerprint = chosen_circ.guard.clone();
         self.guards
