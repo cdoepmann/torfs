@@ -122,6 +122,7 @@ impl SimulationRangeEdge {
     }
 
     /// Get the day described by this simulation range edge, if present
+    #[allow(unused)]
     pub(crate) fn day(&self) -> Option<u8> {
         match self {
             SimulationRangeEdge::MonthYear(_) => None,

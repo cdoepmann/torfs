@@ -24,35 +24,6 @@ lazy_static! {
     static ref NEXT_MESSAGE: GlobalCounter = GlobalCounter::new(0);
 }
 
-/// The trace of a single client during simulation
-pub struct ClientTrace {
-    client_id: u64,
-    /// collected messages (time message ID + exit/sender ID)
-    messages: Vec<(DateTime<Utc>, u64, u64)>,
-}
-
-impl ClientTrace {
-    pub fn new(client_id: u64) -> ClientTrace {
-        ClientTrace {
-            client_id,
-            messages: Vec::new(),
-        }
-    }
-
-    pub fn push_stream(&mut self, timestamps: Vec<DateTime<Utc>>) {
-        if timestamps.len() == 0 {
-            return;
-        }
-
-        let sender = NEXT_RECEIVER.get_next();
-        let message_ids = NEXT_MESSAGE.get_next_n(timestamps.len() as u64);
-
-        for (timestamp, message_id) in timestamps.into_iter().zip(message_ids.into_iter()) {
-            self.messages.push((timestamp, message_id, sender));
-        }
-    }
-}
-
 pub fn make_trace_entries(
     timestamps: Vec<DateTime<Utc>>,
     exit_id: u64,

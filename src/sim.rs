@@ -2,7 +2,6 @@
 
 use anyhow;
 use anyhow::Context;
-use indicatif::ParallelProgressIterator;
 #[allow(unused_imports)]
 use log::{debug, info, trace, warn};
 use rayon::prelude::*;
@@ -195,7 +194,7 @@ impl Simulator {
             clients.into_iter().map(|c| c.into_observer()),
             adversary,
         );
-        // observer.print();
+        observer.print();
 
         trace_handle.stop_and_join()?;
 

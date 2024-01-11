@@ -109,6 +109,7 @@ impl<U: UserModel> Client<U> {
     }
 
     /// Get the client's ID
+    #[allow(unused)]
     pub(crate) fn get_id(&self) -> u64 {
         self.id
     }

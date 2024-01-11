@@ -2,8 +2,6 @@
 
 use std::net::IpAddr;
 
-use anyhow;
-use anyhow::Context;
 #[allow(unused_imports)]
 use log::{debug, info, trace, warn};
 

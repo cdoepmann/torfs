@@ -2,9 +2,11 @@
 //!
 //! Every client has their own `ClientObserver` to collect events locally.
 //! When the simulation finishes, these are collected into an overall observer object.
+//!
+//! Please note that this module still lacks a clear concept until it is clear
+//! which data is really useful and needed. Until then, it is a bit messy.
 
 use std::cmp::Ordering;
-use std::path::Path;
 
 use anyhow;
 use chrono::{DateTime, Utc};
@@ -14,7 +16,7 @@ use tordoc::{consensus::Flag, Consensus, Fingerprint};
 
 use crate::adversaries::Adversary;
 use crate::client;
-use crate::trace::{make_trace_entries, ClientTrace, MemoryCsvWriter};
+use crate::trace::{make_trace_entries, MemoryCsvWriter};
 use crate::user::Request;
 
 #[allow(unused_imports)]
@@ -23,7 +25,6 @@ use log::{debug, info, trace, warn};
 pub(crate) struct SimulationObserver {
     circuit_events: Vec<CircuitUsedEvent>,
     adversary: Adversary,
-    client_traces: Vec<ClientTrace>,
 }
 
 impl SimulationObserver {
@@ -32,8 +33,6 @@ impl SimulationObserver {
         client_observers: impl IntoIterator<Item = ClientObserver>,
         adversary: Adversary,
     ) -> SimulationObserver {
-        let mut client_traces = Vec::new();
-
         // merge the sorted event vectors into a single one
         use itertools::Itertools;
         let merged_iterator = client_observers
@@ -47,7 +46,6 @@ impl SimulationObserver {
         SimulationObserver {
             circuit_events: merged_iterator.collect(),
             adversary,
-            client_traces,
         }
     }
 
@@ -80,6 +78,7 @@ impl SimulationObserver {
 pub(crate) struct NewCircuitEvent {
     pub time: DateTime<Utc>,
     pub client_id: u64,
+    #[allow(unused)]
     pub circuit: TorCircuit,
     pub port: u16,
 }
@@ -111,6 +110,7 @@ impl Eq for NewCircuitEvent {}
 /// doesn't save a (clone) covered_needs reference, but only a snapshot
 /// serialized to a String
 #[derive(Clone, Debug)]
+#[allow(unused)]
 struct ShallowCircuitSnapshot {
     pub guard: Fingerprint,
     pub middle: Fingerprint,
@@ -176,6 +176,7 @@ impl Eq for CircuitUsedEvent {}
 struct CircuitClosedEvent {
     time: DateTime<Utc>,
     client_id: u64,
+    #[allow(unused)]
     circuit: ShallowCircuitSnapshot,
     reason: CircuitCloseReason,
 }
@@ -213,8 +214,10 @@ impl Eq for CircuitClosedEvent {}
 /// An observer object used by a single client to collect their events (locally).
 pub(crate) struct ClientObserver {
     client_id: u64,
+    #[allow(unused)]
     events_new_circuit: Vec<NewCircuitEvent>,
     events_circuit_used: Vec<CircuitUsedEvent>,
+    #[allow(unused)]
     events_circuit_closed: Vec<CircuitClosedEvent>,
 }
 
@@ -234,7 +237,7 @@ impl ClientObserver {
         &mut self,
         time: DateTime<Utc>,
         circuit: &TorCircuit,
-        port: u16,
+        _port: u16,
         reason: String,
     ) {
         trace!(

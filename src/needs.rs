@@ -11,7 +11,6 @@
 use crate::client::ShallowCircuit;
 use crate::utils::*;
 
-use std::cell::{Cell, RefCell};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Display;
 use std::sync::RwLock;
@@ -135,6 +134,7 @@ impl NeedHandle {
     }
 
     /// Returns `true` if the handle points to a need that still exists.
+    #[allow(unused)]
     pub fn exists(&self) -> bool {
         self.need.upgrade().is_some()
     }
@@ -142,6 +142,7 @@ impl NeedHandle {
     /// Reset the need's expiration time to count from `now` on, if the need still exists.
     ///
     /// Does nothing if the need has already gone.
+    #[allow(unused)]
     pub fn reset_expiration(&self, now: &DateTime<Utc>) {
         if let Some(need) = self.need.upgrade() {
             need.reset_expiration(now)
