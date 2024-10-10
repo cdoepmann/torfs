@@ -10,11 +10,11 @@ anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 chrono = "0.4"
 regex = "1"
-tordoc = { path = "../tordoc" }
-tor-circuit-generator = { path = "../tor-circuit-generator" }
-seeded_rand = { path = "../seeded_rand" }
+tordoc = { git = "https://github.com/cdoepmann/tordoc" }
+tor-circuit-generator = { git = "https://github.com/cdoepmann/tor-circuit-generator" }
+seeded_rand = { git = "https://github.com/cdoepmann/seeded_rand" }
 log = "0.4"
-ppcalc_metric = { path = "../ppcalc_metric" }
+ppcalc_metric = { git = "https://github.com/cdoepmann/ppcalc" }
 env_logger = "0.10.0"
 rand = "0.8.5"
 lazy_static = "1.4.0"
